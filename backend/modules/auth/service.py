@@ -1,0 +1,108 @@
+from core.database import get_supabase_admin
+from core.security import create_access_token
+from modules.auth.schemas import SignupRequest, LoginRequest
+from fastapi import HTTPException, status
+import logging
+
+logger = logging.getLogger(__name__)
+
+async def signup(data: SignupRequest) -> dict:
+    db = get_supabase_admin()
+    user_id = None
+    try:
+        auth_response = db.auth.admin.create_user({
+            "email": data.email,
+            "password": data.password,
+            "email_confirm": True
+        })
+        user_id = auth_response.user.id
+
+        db.table("users").insert({
+            "id": user_id,
+            "role": "student",
+            "full_name": data.full_name,
+            "email": data.email,
+            "phone": data.phone,
+            "city": data.city,
+            "age": data.age,
+            "preferred_language": data.preferred_language
+        }).execute()
+
+        db.table("student_profiles").insert({
+            "user_id": user_id,
+            "status": "pending",
+            "onboarding_status": "not_started"
+        }).execute()
+
+        db.table("chat_sessions").insert({
+            "student_id": user_id,
+            "total_messages": 0
+        }).execute()
+
+        logger.info(f"New student registered: {data.email}")
+        return {
+            "message": "Account created successfully. Please wait for admin approval.",
+            "user_id": user_id
+        }
+
+    except Exception as e:
+        logger.error(f"Signup error: {e}")
+        if user_id:
+            try:
+                db.auth.admin.delete_user(user_id)
+            except:
+                pass
+        raise HTTPException(status_code=400, detail=str(e))
+
+async def login(data: LoginRequest) -> dict:
+    db = get_supabase_admin()
+    try:
+        auth_response = db.auth.sign_in_with_password({
+            "email": data.email,
+            "password": data.password
+        })
+        user_id = auth_response.user.id
+
+        user = db.table("users").select("*").eq("id", user_id).single().execute()
+        if not user.data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user_data = user.data
+        student_status = "active"
+
+        if user_data["role"] == "student":
+            profile = db.table("student_profiles").select("status").eq("user_id", user_id).single().execute()
+            if profile.data:
+                student_status = profile.data["status"]
+                if student_status == "suspended":
+                    raise HTTPException(status_code=403, detail="Account suspended. Contact admin.")
+                if student_status == "expired":
+                    raise HTTPException(status_code=403, detail="Subscription expired. Please renew.")
+
+            db.table("activity_logs").insert({
+                "student_id": user_id,
+                "action": "login"
+            }).execute()
+
+        token = create_access_token({
+            "sub": user_id,
+            "email": user_data["email"],
+            "role": user_data["role"],
+            "full_name": user_data["full_name"]
+        })
+
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user_id": user_id,
+            "role": user_data["role"],
+            "full_name": user_data["full_name"],
+            "preferred_language": user_data.get("preferred_language", "en"),
+            "status": student_status
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
