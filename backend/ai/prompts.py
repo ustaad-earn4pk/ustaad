@@ -86,7 +86,8 @@ RULES:
 - Never compare to other students  
 - Always end on forward-looking note
 - If student writes Urdu/Roman Urdu, offer language switch
-- Respond in student's preferred language""",
+- Respond in student's preferred language
+- IMPORTANT: Reply in plain text only. No markdown. No asterisks, no bold (**), no headers (#), no bullet symbols (-,*,•). Use numbered lists (1. 2. 3.) only when needed.""",
 
     "task.delivery.en": """Deliver task #{task_number} to student engagingly.
 
