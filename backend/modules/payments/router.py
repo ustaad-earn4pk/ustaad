@@ -59,3 +59,41 @@ async def get_my_payments(user=Depends(get_current_user)):
     db = get_supabase_admin()
     result = db.table("payments").select("*").eq("student_id", user["sub"]).order("created_at", desc=True).execute()
     return result.data or []
+class ReviewPayment(BaseModel):
+    action: str  # "approve" or "reject"
+    admin_note: Optional[str] = None
+
+@router.get("/admin/pending")
+async def admin_pending_payments(user=Depends(get_current_user)):
+    db = get_supabase_admin()
+    result = db.table("payments").select("*").eq("status", "pending").order("created_at", desc=False).execute()
+    return result.data or []
+
+@router.post("/admin/{payment_id}/review")
+async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depends(get_current_user)):
+    from fastapi import HTTPException
+    db = get_supabase_admin()
+
+    payment = db.table("payments").select("*").eq("id", payment_id).single().execute()
+    if not payment.data:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    new_status = "approved" if body.action == "approve" else "rejected"
+
+    db.table("payments").update({
+        "status": new_status,
+        "notes": body.admin_note,
+        "verified_at": "now()",
+        "verified_by": user["sub"]
+    }).eq("id", payment_id).execute()
+
+    if body.action == "approve":
+        db.table("student_profiles").update({
+            "status": "approved",
+            "approved_at": "now()",
+            "approved_by": user["sub"],
+            "current_plan": payment.data.get("plan_id") or "normal",
+            "payment_id": payment_id
+        }).eq("user_id", payment.data["student_id"]).execute()
+
+    return {"message": f"Payment {new_status}", "payment_id": payment_id}
