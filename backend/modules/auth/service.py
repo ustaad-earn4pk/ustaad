@@ -57,23 +57,28 @@ async def signup(data: SignupRequest) -> dict:
 async def login(data: LoginRequest) -> dict:
     db = get_supabase_admin()
     try:
-        auth_response = db.auth.sign_in_with_password({
-            "email": data.email,
-            "password": data.password
-        })
-        user_id = auth_response.user.id
+        user_result = db.table("users").select("*").eq("email", data.email).execute()
 
-        user = db.table("users").select("*").eq("id", user_id).single().execute()
-        if not user.data:
-            raise HTTPException(status_code=404, detail="User not found")
+        if not user_result.data:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
 
-        user_data = user.data
+        user_data = user_result.data[0]
+
+        try:
+            auth_response = db.auth.sign_in_with_password({
+                "email": data.email,
+                "password": data.password
+            })
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        user_id = user_data["id"]
         student_status = "active"
 
         if user_data["role"] == "student":
-            profile = db.table("student_profiles").select("status").eq("user_id", user_id).single().execute()
+            profile = db.table("student_profiles").select("status").eq("user_id", user_id).execute()
             if profile.data:
-                student_status = profile.data["status"]
+                student_status = profile.data[0]["status"]
                 if student_status == "suspended":
                     raise HTTPException(status_code=403, detail="Account suspended. Contact admin.")
                 if student_status == "expired":
