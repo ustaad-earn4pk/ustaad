@@ -1,12 +1,15 @@
 from core.database import get_supabase_admin
 from core.security import create_access_token
-from modules.auth.schemas import SignupRequest, LoginRequest
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
-async def signup(data: SignupRequest) -> dict:
+SUPABASE_URL = "https://qhxhetjspjzdbpbeucfh.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_4Swh9me3ZBRvz6fzwV-dWQ_TnDN12dX"
+
+async def signup(data) -> dict:
     db = get_supabase_admin()
     user_id = None
     try:
@@ -39,12 +42,10 @@ async def signup(data: SignupRequest) -> dict:
             "total_messages": 0
         }).execute()
 
-        logger.info(f"New student registered: {data.email}")
         return {
             "message": "Account created successfully. Please wait for admin approval.",
             "user_id": user_id
         }
-
     except Exception as e:
         logger.error(f"Signup error: {e}")
         if user_id:
@@ -54,24 +55,30 @@ async def signup(data: SignupRequest) -> dict:
                 pass
         raise HTTPException(status_code=400, detail=str(e))
 
-async def login(data: LoginRequest) -> dict:
+async def login(data) -> dict:
     db = get_supabase_admin()
     try:
+        # Step 1: verify password via Supabase REST auth
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{SUPABASE_URL}/auth/v1/token?grant_type=password",
+                headers={
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Content-Type": "application/json"
+                },
+                json={"email": data.email, "password": data.password}
+            )
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        # Step 2: get user from our users table
         user_result = db.table("users").select("*").eq("email", data.email).execute()
 
         if not user_result.data:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=404, detail="User not found")
 
         user_data = user_result.data[0]
-
-        try:
-            auth_response = db.auth.sign_in_with_password({
-                "email": data.email,
-                "password": data.password
-            })
-        except Exception:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
-
         user_id = user_data["id"]
         student_status = "active"
 
@@ -80,9 +87,9 @@ async def login(data: LoginRequest) -> dict:
             if profile.data:
                 student_status = profile.data[0]["status"]
                 if student_status == "suspended":
-                    raise HTTPException(status_code=403, detail="Account suspended. Contact admin.")
+                    raise HTTPException(status_code=403, detail="Account suspended.")
                 if student_status == "expired":
-                    raise HTTPException(status_code=403, detail="Subscription expired. Please renew.")
+                    raise HTTPException(status_code=403, detail="Subscription expired.")
 
             db.table("activity_logs").insert({
                 "student_id": user_id,
