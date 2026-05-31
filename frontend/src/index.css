@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    overscroll-behavior: none;
+  }
+
+  .font-urdu {
+    font-family: 'Noto Nastaliq Urdu', serif;
+    direction: rtl;
+    line-height: 2;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply bg-brand-400 text-white font-medium py-3 px-6 rounded-2xl
+           active:scale-95 transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-sm hover:bg-brand-600;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-brand-600 font-medium py-3 px-6 rounded-2xl
+           border border-brand-200 active:scale-95 transition-all duration-150
+           hover:bg-brand-50;
+  }
+
+  .btn-ghost {
+    @apply text-gray-500 font-medium py-2 px-4 rounded-xl
+           active:scale-95 transition-all duration-150
+           hover:bg-gray-100;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-3xl shadow-sm border border-gray-100 p-5;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-md hover:-translate-y-0.5 
+           transition-all duration-200 cursor-pointer;
+  }
+
+  /* Input */
+  .input {
+    @apply w-full bg-gray-50 border border-gray-200 rounded-2xl
+           px-4 py-3 text-gray-900 placeholder-gray-400
+           focus:outline-none focus:ring-2 focus:ring-brand-400 
+           focus:border-transparent transition-all duration-150;
+  }
+
+  /* Skeleton loader */
+  .skeleton {
+    @apply bg-gray-200 animate-pulse rounded-2xl;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  /* Score bar */
+  .score-bar {
+    @apply h-2 rounded-full bg-gray-100 overflow-hidden;
+  }
+  .score-bar-fill {
+    @apply h-full rounded-full bg-brand-400 transition-all duration-700 ease-out;
+  }
+}
+
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 250ms, transform 250ms;
+}
+
+/* Chat bubbles */
+.bubble-bot {
+  @apply bg-white border border-gray-100 text-gray-800 rounded-3xl rounded-tl-sm
+         px-4 py-3 shadow-sm max-w-xs;
+}
+.bubble-student {
+  @apply bg-brand-400 text-white rounded-3xl rounded-tr-sm
+         px-4 py-3 max-w-xs ml-auto;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { 
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+/* PWA safe area */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
