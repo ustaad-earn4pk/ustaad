@@ -45,7 +45,9 @@ function MessageBubble({ msg, isLast }) {
             : 'bg-brand-400 text-white rounded-br-md'
         }`}
       >
-        {msg.content || msg.message}
+        {(msg.content || msg.message || '').split('\n').map((line, i, arr) => (
+          <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+        ))}
       </div>
     </motion.div>
   )
@@ -89,12 +91,10 @@ export default function Chat() {
   const [langSuggestion, setLangSuggestion] = useState(null)
   const language = user?.preferred_language || 'en'
 
-  // Load history on mount
   useEffect(() => {
     loadHistory()
   }, [])
 
-  // Auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
@@ -104,7 +104,6 @@ export default function Chat() {
       const res = await chatAPI.getHistory()
       const history = res.data || []
       if (history.length === 0) {
-        // First time — show welcome message
         setMessages([{
           role: 'assistant',
           content: language === 'ur_nastaliq'
@@ -134,7 +133,6 @@ export default function Chat() {
     setBotExpr('typing')
     setLangSuggestion(null)
 
-    // Optimistic user message
     const userMsg = { role: 'user', content: text, id: Date.now() }
     setMessages(prev => [...prev, userMsg])
 
@@ -234,7 +232,6 @@ export default function Chat() {
 
             {loading && <TypingIndicator />}
 
-            {/* Language suggestion */}
             {langSuggestion && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
@@ -247,7 +244,6 @@ export default function Chat() {
               </motion.div>
             )}
 
-            {/* Limit warning */}
             {remaining !== null && remaining <= 3 && remaining > 0 && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -305,7 +301,6 @@ export default function Chat() {
           </motion.button>
         </div>
 
-        {/* Quick suggestions — only when no messages or first time */}
         {messages.length <= 1 && !loading && (
           <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
             {[
