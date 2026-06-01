@@ -21,6 +21,15 @@ const EMOJI_TO_EXPRESSION = {
   '🤗': 'welcoming',
 }
 
+function cleanText(text) {
+  return (text || '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/#{1,6}\s/g, '')
+    .replace(/---/g, '')
+    .replace(/___/g, '')
+}
+
 function MessageBubble({ msg, isLast }) {
   const isBot = msg.role === 'assistant'
   return (
@@ -45,7 +54,7 @@ function MessageBubble({ msg, isLast }) {
             : 'bg-brand-400 text-white rounded-br-md'
         }`}
       >
-        {(msg.content || msg.message || '').split('\n').map((line, i, arr) => (
+        {cleanText(msg.content || msg.message || '').split('\n').map((line, i, arr) => (
           <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
         ))}
       </div>
@@ -175,12 +184,9 @@ export default function Chat() {
     }
   }
 
-  const name = user?.full_name?.split(' ')[0] || 'Student'
-
   return (
     <div className={`flex flex-col h-screen bg-gray-50 ${isRTL() ? 'dir-rtl' : ''}`}>
 
-      {/* Header */}
       <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-3 safe-top flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
@@ -209,7 +215,6 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {historyLoading ? (
           <div className="flex items-center justify-center h-full">
@@ -261,7 +266,6 @@ export default function Chat() {
         )}
       </div>
 
-      {/* Input */}
       <div className="bg-white border-t border-gray-100 px-4 py-3 safe-bottom flex-shrink-0">
         <div className="flex gap-2 items-end">
           <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 flex items-end gap-2">
