@@ -13,6 +13,108 @@ const fadeUp = {
   animate: { y: 0, opacity: 1 }
 }
 
+function PaymentsTab() {
+  const [payments, setPayments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [reviewing, setReviewing] = useState(null)
+  const [note, setNote] = useState('')
+
+  useEffect(() => {
+    loadPayments()
+  }, [])
+
+  async function loadPayments() {
+    try {
+      const res = await adminAPI.getPendingPayments()
+      setPayments(res.data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleReview(paymentId, action) {
+    setReviewing(paymentId)
+    try {
+      await adminAPI.reviewPayment(paymentId, { action, admin_note: note || null })
+      setNote('')
+      loadPayments()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Action failed.')
+    } finally {
+      setReviewing(null)
+    }
+  }
+
+  if (loading) return <div className="skeleton h-32" />
+
+  if (payments.length === 0) return (
+    <div className="card text-center py-8">
+      <p className="text-2xl mb-2">✅</p>
+      <p className="text-gray-500 text-sm">Koi pending payment nahi</p>
+    </div>
+  )
+
+  return (
+    <div className="space-y-4">
+      {payments.map(p => (
+        <div key={p.id} className="card space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-900">{p.student_id}</p>
+              <p className="text-xs text-gray-500">PKR {p.amount_pkr} • {p.gateway}</p>
+            </div>
+            <span className="badge bg-amber-50 text-amber-700">pending</span>
+          </div>
+
+          <div className="text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Transaction ID</span>
+              <span className="font-mono text-gray-900">{p.transaction_id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Sender</span>
+              <span className="text-gray-900">{p.sender_number || '—'}</span>
+            </div>
+          </div>
+
+          {p.screenshot_url && (
+            <a href={p.screenshot_url} target="_blank" rel="noopener noreferrer">
+              <img src={p.screenshot_url} alt="screenshot" className="w-full rounded-2xl border border-gray-100 max-h-48 object-contain" />
+            </a>
+          )}
+
+          <input
+            type="text"
+            placeholder="Note (optional)"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            className="input w-full text-sm"
+          />
+
+          <div className="flex gap-2">
+            <button
+              disabled={reviewing === p.id}
+              onClick={() => handleReview(p.id, 'approve')}
+              className="flex-1 btn-primary py-2 text-sm disabled:opacity-50"
+            >
+              ✓ Approve
+            </button>
+            <button
+              disabled={reviewing === p.id}
+              onClick={() => handleReview(p.id, 'reject')}
+              className="flex-1 py-2 text-sm rounded-2xl bg-red-50 text-red-600 font-medium disabled:opacity-50"
+            >
+              ✕ Reject
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
@@ -103,7 +205,6 @@ export default function AdminDashboard() {
         {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <>
-            {/* Stats grid */}
             <motion.div variants={fadeUp} className="grid grid-cols-2 gap-3">
               {loading ? (
                 Array(4).fill(0).map((_, i) => (
@@ -116,11 +217,7 @@ export default function AdminDashboard() {
                   { label: 'Active', value: stats?.active || 0, icon: '✅', color: 'bg-brand-50' },
                   { label: 'Trial', value: stats?.trial || 0, icon: '🎯', color: 'bg-purple-50' },
                 ].map((s, i) => (
-                  <motion.div
-                    key={i}
-                    variants={fadeUp}
-                    className={`card ${s.color}`}
-                  >
+                  <motion.div key={i} variants={fadeUp} className={`card ${s.color}`}>
                     <p className="text-2xl mb-1">{s.icon}</p>
                     <p className="text-2xl font-bold text-gray-900">{s.value}</p>
                     <p className="text-xs text-gray-600">{s.label}</p>
@@ -129,7 +226,6 @@ export default function AdminDashboard() {
               )}
             </motion.div>
 
-            {/* Cost monitor */}
             <motion.div variants={fadeUp} className="card">
               <p className="text-sm font-semibold text-gray-700 mb-1">💰 Monthly AI Cost</p>
               <p className="text-2xl font-bold text-gray-900">
@@ -138,7 +234,6 @@ export default function AdminDashboard() {
               <p className="text-xs text-gray-500 mt-1">USD this month</p>
             </motion.div>
 
-            {/* Pending approvals */}
             {students.filter(s => s.status === 'pending').length > 0 && (
               <motion.div variants={fadeUp}>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
@@ -203,9 +298,8 @@ export default function AdminDashboard() {
 
         {/* PAYMENTS TAB */}
         {activeTab === 'payments' && (
-          <motion.div variants={fadeUp} className="card text-center py-8">
-            <p className="text-2xl mb-2">💳</p>
-            <p className="text-gray-500 text-sm">Payments section — coming soon</p>
+          <motion.div variants={fadeUp}>
+            <PaymentsTab />
           </motion.div>
         )}
 
