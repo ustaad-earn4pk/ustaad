@@ -1,26 +1,22 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File, Form
+from typing import Optional
 from core.security import get_current_user
 from core.database import get_supabase_admin
 from core.config import settings
 from pydantic import BaseModel
-from typing import Optional
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
-class PaymentSubmit(BaseModel):
-    plan_id: str
-    amount_pkr: int
-    gateway: str = "jazzcash"
-    screenshot_url: Optional[str] = None
-    transaction_id: Optional[str] = None
 
 @router.get("/plans")
 async def get_plans():
     db = get_supabase_admin()
     result = db.table("subscription_plans").select("*").eq("is_active", True).execute()
     return result.data or []
+
 
 @router.get("/account-info")
 async def get_account_info():
@@ -32,42 +28,69 @@ async def get_account_info():
         "payment_mode": mode.data["value"]["mode"] if mode.data else "manual",
         "jazzcash": jc.data["value"]["number"] if jc.data else settings.jazzcash_number,
         "easypaisa": ep.data["value"]["number"] if ep.data else "",
-        "instructions": {
-            "en": f"Send payment to JazzCash: {settings.jazzcash_number} and upload screenshot below.",
-            "ur_nastaliq": f"JazzCash نمبر {settings.jazzcash_number} پر رقم بھیجیں اور سکرین شاٹ اپلوڈ کریں۔",
-            "ur_roman": f"JazzCash {settings.jazzcash_number} par raqam bhejein aur screenshot upload karein."
-        }
     }
 
+
 @router.post("/submit")
-async def submit_payment(data: PaymentSubmit, user=Depends(get_current_user)):
+async def submit_payment(
+    plan_id: Optional[str] = Form(None),
+    amount_pkr: int = Form(999),
+    transaction_id: str = Form(...),
+    sender_number: str = Form(...),
+    screenshot_url: UploadFile = File(...),
+    user=Depends(get_current_user)
+):
     db = get_supabase_admin()
+
+    # Upload screenshot to Supabase Storage
+    file_bytes = await screenshot_url.read()
+    ext = screenshot_url.filename.rsplit(".", 1)[-1].lower() if "." in screenshot_url.filename else "jpg"
+    file_path = f"{user['sub']}/{uuid.uuid4()}.{ext}"
+
+    try:
+        db.storage.from_("payment-screenshots").upload(
+            file_path,
+            file_bytes,
+            {"content-type": screenshot_url.content_type}
+        )
+        public_url = db.storage.from_("payment-screenshots").get_public_url(file_path)
+    except Exception as e:
+        logger.error(f"Storage upload failed: {e}")
+        public_url = None
+
     result = db.table("payments").insert({
         "student_id": user["sub"],
-        "plan_id": data.plan_id,
-        "amount_pkr": data.amount_pkr,
+        "plan_id": plan_id if plan_id else None,
+        "amount_pkr": amount_pkr,
         "payment_method": "manual",
-        "gateway": data.gateway,
-        "screenshot_url": data.screenshot_url,
-        "transaction_id": data.transaction_id,
+        "gateway": "jazzcash",
+        "screenshot_url": public_url,
+        "transaction_id": transaction_id,
+        "sender_number": sender_number,
         "status": "pending"
     }).execute()
+
     return {"message": "Payment submitted. Admin will verify shortly.", "payment_id": result.data[0]["id"]}
+
 
 @router.get("/my-payments")
 async def get_my_payments(user=Depends(get_current_user)):
     db = get_supabase_admin()
     result = db.table("payments").select("*").eq("student_id", user["sub"]).order("created_at", desc=True).execute()
     return result.data or []
+
+
 class ReviewPayment(BaseModel):
-    action: str  # "approve" or "reject"
+    action: str
     admin_note: Optional[str] = None
+
 
 @router.get("/admin/pending")
 async def admin_pending_payments(user=Depends(get_current_user)):
     db = get_supabase_admin()
     result = db.table("payments").select("*").eq("status", "pending").order("created_at", desc=False).execute()
     return result.data or []
+
 
 @router.post("/admin/{payment_id}/review")
 async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depends(get_current_user)):
