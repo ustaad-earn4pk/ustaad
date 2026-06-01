@@ -32,9 +32,13 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact />
-            <div className="w-10 h-10 bg-brand-400 rounded-2xl flex items-center justify-center text-white font-bold">
+            <button
+              onClick={logout}
+              className="w-10 h-10 bg-brand-400 rounded-2xl flex items-center justify-center text-white font-bold"
+              title="Logout"
+            >
               {name[0]}
-            </div>
+            </button>
           </div>
         </div>
       </div>
