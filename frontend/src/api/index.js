@@ -33,6 +33,7 @@ export const onboardingAPI = {
   start: () => api.post('/onboarding/start'),
   sendMessage: (data) => api.post('/onboarding/message', data),
   getStatus: () => api.get('/onboarding/status'),
+  submitForm: (data) => api.post('/onboarding/submit-form', data),
 }
 export const chatAPI = {
   send: (data) => api.post('/chat/send', data),
@@ -49,6 +50,12 @@ export const paymentAPI = {
   submit: (data) => api.post('/payments/submit', data),
   submitWithFile: (formData) => api.post('/payments/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getMyStatus: () => api.get('/payments/my-payments'),
+}
+export const courseAPI = {
+  getMyCourses: () => api.get('/courses/my'),
+  getCourse: (id) => api.get(`/courses/${id}`),
+  getPlans: () => api.get('/courses/plans'),
+  getAssessment: () => api.get('/courses/assessment'),
 }
 export const adminAPI = {
   getDashboard: () => api.get('/admin/dashboard'),
