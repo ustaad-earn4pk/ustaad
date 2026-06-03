@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { useLangStore } from '../../store/langStore'
@@ -28,6 +28,10 @@ export default function Signup() {
   const [error, setError] = useState('')
   const [botExpr, setBotExpr] = useState('welcoming')
 
+  // Bot check
+  const formLoadTime = useRef(Date.now() / 1000)
+  const [honeypot, setHoneypot] = useState('')
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -35,9 +39,13 @@ export default function Signup() {
     setBotExpr('thinking')
 
     try {
-      await authAPI.signup(form)
+      await authAPI.signup({
+        ...form,
+        website: honeypot,
+        form_load_time: formLoadTime.current
+      })
       setBotExpr('celebrating')
-      setTimeout(() => navigate('/pending'), 1500)
+      setTimeout(() => navigate('/login'), 1500)
     } catch (err) {
       setBotExpr('strict')
       setError(err.response?.data?.detail || t('error'))
@@ -76,6 +84,25 @@ export default function Signup() {
           <div className="card">
             <form onSubmit={handleSubmit} className="space-y-4">
 
+              {/* Honeypot — invisible to humans */}
+              <input
+                type="text"
+                name="website"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                style={{
+                  opacity: 0,
+                  position: 'absolute',
+                  left: '-9999px',
+                  height: 0,
+                  width: 0,
+                  overflow: 'hidden'
+                }}
+              />
+
               <div>
                 <label className="text-sm text-gray-600 font-medium mb-1 block">{t('fullName')} *</label>
                 <input
@@ -105,7 +132,7 @@ export default function Signup() {
                 <input
                   type="password"
                   className="input"
-                  placeholder="Strong password"
+                  placeholder="Strong password (min 8 characters)"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   required
