@@ -2,14 +2,27 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../../store/authStore'
 import { paymentAPI } from '../../api'
+import { useLocation } from 'react-router-dom'
 import UstaadBot from '../../components/bot/UstaadBot'
 import LanguageSwitcher from '../../components/common/LanguageSwitcher'
 
+const TRACK_INFO = {
+  computer_basics:    { name: 'Computer & Internet Basics',  price: 5000,  duration: '30 din' },
+  web_fundamentals:   { name: 'Web & Business Basics',       price: 5000,  duration: '30 din' },
+  ghl_developer:      { name: 'GoHighLevel Developer',       price: 7000,  duration: '45 din' },
+  integration_expert: { name: 'Integration Expert',          price: 8000,  duration: '45 din' },
+  client_hunting:     { name: 'Client Hunting & Portfolio',  price: 12000, duration: '45 din' },
+}
+
 export default function Pending() {
   const { user, logout } = useAuthStore()
-  const [step, setStep] = useState('status') // status | form | submitted
+  const location = useLocation()
+  const selectedTrack = location.state?.selectedTrack
+  const trackInfo = TRACK_INFO[selectedTrack] || null
+
+  const [step, setStep] = useState('status')
   const [accountInfo, setAccountInfo] = useState(null)
-  const [form, setForm] = useState({ transaction_id: '', sender_number: '', screenshot: null, plan_id: '' })
+  const [form, setForm] = useState({ transaction_id: '', sender_number: '', screenshot: null })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -45,11 +58,11 @@ export default function Pending() {
     if (!form.screenshot) return setError('Screenshot required.')
 
     const formData = new FormData()
-    formData.append('plan_id', form.plan_id || '')
-    formData.append('amount_pkr', 999)
+    formData.append('amount_pkr', trackInfo?.price || 999)
     formData.append('transaction_id', form.transaction_id.trim())
     formData.append('sender_number', form.sender_number.trim())
     formData.append('screenshot_url', form.screenshot)
+    if (selectedTrack) formData.append('plan_id', selectedTrack)
 
     setSubmitting(true)
     try {
@@ -69,12 +82,8 @@ export default function Pending() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 200 }}
-          className="mb-6"
-        >
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 200 }} className="mb-6">
           <UstaadBot expression={step === 'submitted' ? 'thinking' : 'happy'} size={100} />
         </motion.div>
 
@@ -82,23 +91,34 @@ export default function Pending() {
           {user?.full_name?.split(' ')[0]} bhai! 👋
         </h1>
 
-        {/* SUBMITTED STATE */}
+        {/* SUBMITTED */}
         {step === 'submitted' && (
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-xs">
             <div className="card text-center mb-4">
               <div className="text-4xl mb-3">⏳</div>
               <h2 className="font-semibold text-gray-900 mb-2">Payment Under Review</h2>
-              <p className="text-gray-500 text-sm">Admin 24 ghante mein verify karega. Thoda wait karo!</p>
+              <p className="text-gray-500 text-sm">Admin 24 ghante mein verify karega.</p>
             </div>
-            <button onClick={logout} className="w-full text-sm text-gray-400 hover:text-gray-600 text-center">
-              Logout
-            </button>
+            <button onClick={logout} className="w-full text-sm text-gray-400 hover:text-gray-600 text-center">Logout</button>
           </motion.div>
         )}
 
-        {/* STATUS / PAYMENT INSTRUCTIONS */}
+        {/* PAYMENT INSTRUCTIONS */}
         {step === 'status' && (
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-xs">
+
+            {/* Selected course info */}
+            {trackInfo && (
+              <div className="card bg-brand-50 border border-brand-100 mb-4">
+                <p className="text-xs text-brand-600 font-semibold uppercase mb-1">Selected Course</p>
+                <p className="font-bold text-gray-900 text-sm">{trackInfo.name}</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs text-gray-500">⏱ {trackInfo.duration}</span>
+                  <span className="text-green-600 font-bold">PKR {trackInfo.price.toLocaleString()}</span>
+                </div>
+              </div>
+            )}
+
             <div className="card mb-4">
               <p className="text-sm font-semibold text-gray-700 mb-3">Step 1 — Payment Bhejo</p>
               <div className="bg-gray-50 rounded-2xl p-3 space-y-2 text-sm">
@@ -110,19 +130,17 @@ export default function Pending() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Amount</span>
-                  <span className="font-bold text-green-600">PKR 999</span>
+                  <span className="font-bold text-green-600">
+                    PKR {trackInfo ? trackInfo.price.toLocaleString() : '999'}
+                  </span>
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => setStep('form')}
-              className="btn-primary w-full py-3"
-            >
+
+            <button onClick={() => setStep('form')} className="btn-primary w-full py-3">
               Maine Payment Kar Di ✓
             </button>
-            <button onClick={logout} className="w-full text-sm text-gray-400 mt-3 text-center">
-              Logout
-            </button>
+            <button onClick={logout} className="w-full text-sm text-gray-400 mt-3 text-center">Logout</button>
           </motion.div>
         )}
 
@@ -132,63 +150,41 @@ export default function Pending() {
             <div className="card mb-4">
               <p className="text-sm font-semibold text-gray-700 mb-4">Step 2 — Proof Upload Karo</p>
 
-              {error && (
-                <div className="bg-red-50 text-red-600 text-sm rounded-xl p-3 mb-3">
-                  {error}
-                </div>
-              )}
+              {error && <div className="bg-red-50 text-red-600 text-sm rounded-xl p-3 mb-3">{error}</div>}
 
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Transaction ID</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. TXN123456789"
+                  <input type="text" placeholder="e.g. TXN123456789"
                     value={form.transaction_id}
                     onChange={e => setForm({ ...form, transaction_id: e.target.value })}
-                    className="input w-full"
-                  />
+                    className="input w-full" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Tumhara JazzCash Number</label>
-                  <input
-                    type="text"
-                    placeholder="03XX-XXXXXXX"
+                  <input type="text" placeholder="03XX-XXXXXXX"
                     value={form.sender_number}
                     onChange={e => setForm({ ...form, sender_number: e.target.value })}
-                    className="input w-full"
-                  />
+                    className="input w-full" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Screenshot</label>
                   <label className="block w-full border-2 border-dashed border-gray-200 rounded-2xl p-4 text-center cursor-pointer hover:border-brand-300 transition">
-                    {form.screenshot ? (
-                      <span className="text-green-600 text-sm font-medium">✓ {form.screenshot.name}</span>
-                    ) : (
-                      <span className="text-gray-400 text-sm">Tap to upload</span>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => setForm({ ...form, screenshot: e.target.files[0] || null })}
-                    />
+                    {form.screenshot
+                      ? <span className="text-green-600 text-sm font-medium">✓ {form.screenshot.name}</span>
+                      : <span className="text-gray-400 text-sm">Tap to upload</span>}
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={e => setForm({ ...form, screenshot: e.target.files[0] || null })} />
                   </label>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="btn-primary w-full py-3 disabled:opacity-50"
-            >
+            <button onClick={handleSubmit} disabled={submitting}
+              className="btn-primary w-full py-3 disabled:opacity-50">
               {submitting ? 'Submitting...' : 'Submit Payment Proof'}
             </button>
-            <button
-              onClick={() => setStep('status')}
-              className="w-full text-sm text-gray-400 mt-3 text-center"
-            >
+            <button onClick={() => setStep('status')} className="w-full text-sm text-gray-400 mt-3 text-center">
               Wapas jao
             </button>
           </motion.div>
