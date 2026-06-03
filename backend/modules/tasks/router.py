@@ -4,7 +4,8 @@ from core.security import get_current_user
 from core.database import get_supabase_admin
 from ai.computer_basics_curriculum import get_day_curriculum
 from ai.curriculum import get_curriculum
-from modules.tasks.streak_service import update_streak  # ← STREAK IMPORT
+from modules.tasks.streak_service import update_streak
+from modules.notifications.router import create_notification  # ← ADD
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import anthropic
@@ -87,7 +88,6 @@ async def submit_task_text(
 
     feedback = await grade_task(task.data, body.text_answer, None, student_id)
 
-    # ← STREAK UPDATE
     streak_result = await update_streak(student_id)
 
     return {
@@ -143,7 +143,6 @@ async def submit_task_screenshot(
 
     feedback = await grade_task(task.data, notes or "", screenshot_url, student_id)
 
-    # ← STREAK UPDATE
     streak_result = await update_streak(student_id)
 
     return {
@@ -163,7 +162,6 @@ async def grade_task(task: dict, submission_text: str, screenshot_url: Optional[
         from core.config import settings
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-        # Student ki language fetch karo
         user_data = db.table("users").select("preferred_language").eq("id", student_id).single().execute()
         preferred_language = user_data.data.get("preferred_language", "en") if user_data.data else "en"
 
@@ -294,6 +292,43 @@ PRO_TIP: [one practical GHL/digital skills tip]"""
             "tokens_output": response.usage.output_tokens,
             "estimated_cost_usd": tokens * 0.000003
         }).execute()
+
+        # ── NOTIFY student: task graded (language-aware) ──
+        if preferred_language == "ur_nastaliq":
+            if score >= 80:
+                emoji, verdict = "🌟", "شاندار کام!"
+            elif score >= 60:
+                emoji, verdict = "✅", "اچھا کام!"
+            else:
+                emoji, verdict = "📝", "مزید محنت کریں۔"
+            title = f"{emoji} ٹاسک گریڈ ہو گیا — {score}/100"
+            body = f"{task.get('title', 'Task')} — اسکور: {score}/100. {verdict}"
+        elif preferred_language == "ur_roman":
+            if score >= 80:
+                emoji, verdict = "🌟", "Zabardast!"
+            elif score >= 60:
+                emoji, verdict = "✅", "Acha kaam!"
+            else:
+                emoji, verdict = "📝", "Aur mehnat karo."
+            title = f"{emoji} Task Graded — {score}/100"
+            body = f"{task.get('title', 'Task')} — Score: {score}/100. {verdict}"
+        else:  # English
+            if score >= 80:
+                emoji, verdict = "🌟", "Excellent work!"
+            elif score >= 60:
+                emoji, verdict = "✅", "Good job!"
+            else:
+                emoji, verdict = "📝", "Keep pushing, you can do better."
+            title = f"{emoji} Task Graded — {score}/100"
+            body = f"{task.get('title', 'Task')} — Score: {score}/100. {verdict}"
+
+        await create_notification(
+            db=db,
+            user_id=student_id,
+            type="task_graded",
+            title=title,
+            body=body
+        )
 
         return {"score": score, "feedback": feedback_text}
 
