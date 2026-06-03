@@ -20,6 +20,24 @@ TRACK_DURATIONS = {
     "client_hunting": 45,
 }
 
+TRACK_NAMES = {
+    "computer_basics": "Computer & Internet Basics",
+    "web_fundamentals": "Web & Business Basics",
+    "ghl_developer": "GoHighLevel Developer",
+    "integration_expert": "Integration Expert",
+    "full_stack_automation": "Full Stack Automation",
+    "client_hunting": "Client Hunting & Portfolio",
+}
+
+TRACK_LEVELS = {
+    "computer_basics": 1,
+    "web_fundamentals": 2,
+    "ghl_developer": 3,
+    "integration_expert": 4,
+    "full_stack_automation": 5,
+    "client_hunting": 5,
+}
+
 
 @router.get("/plans")
 async def get_plans():
@@ -58,9 +76,7 @@ async def submit_payment(
 
     try:
         db.storage.from_("payment-screenshots").upload(
-            file_path,
-            file_bytes,
-            {"content-type": screenshot_url.content_type}
+            file_path, file_bytes, {"content-type": screenshot_url.content_type}
         )
         public_url = db.storage.from_("payment-screenshots").get_public_url(file_path)
     except Exception as e:
@@ -129,6 +145,7 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
         plan_started = datetime.utcnow()
         plan_ends = plan_started + timedelta(days=duration)
 
+        # Update student profile
         db.table("student_profiles").update({
             "status": "approved",
             "approved_at": plan_started.isoformat(),
@@ -138,5 +155,18 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
             "plan_ends_at": plan_ends.isoformat(),
             "payment_id": payment_id
         }).eq("user_id", payment.data["student_id"]).execute()
+
+        # Create course record
+        try:
+            db.table("courses").insert({
+                "student_id": payment.data["student_id"],
+                "track": current_track,
+                "level": TRACK_LEVELS.get(current_track, 1),
+                "title": TRACK_NAMES.get(current_track, "USTAAD Course"),
+                "roadmap": {},
+                "is_active": True,
+            }).execute()
+        except Exception as e:
+            logger.error(f"Course creation failed: {e}")
 
     return {"message": f"Payment {new_status}", "payment_id": payment_id}
