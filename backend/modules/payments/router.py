@@ -1,14 +1,24 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from typing import Optional
 from core.security import get_current_user
 from core.database import get_supabase_admin
 from core.config import settings
 from pydantic import BaseModel
+from datetime import datetime, timedelta
 import logging
 import uuid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payments", tags=["Payments"])
+
+TRACK_DURATIONS = {
+    "computer_basics": 30,
+    "web_fundamentals": 30,
+    "ghl_developer": 45,
+    "integration_expert": 45,
+    "full_stack_automation": 60,
+    "client_hunting": 45,
+}
 
 
 @router.get("/plans")
@@ -93,7 +103,6 @@ async def admin_pending_payments(user=Depends(get_current_user)):
 
 @router.post("/admin/{payment_id}/review")
 async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depends(get_current_user)):
-    from fastapi import HTTPException
     db = get_supabase_admin()
 
     payment = db.table("payments").select("*").eq("id", payment_id).single().execute()
@@ -105,16 +114,28 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
     db.table("payments").update({
         "status": new_status,
         "notes": body.admin_note,
-        "verified_at": "now()",
+        "verified_at": datetime.utcnow().isoformat(),
         "verified_by": user["sub"]
     }).eq("id", payment_id).execute()
 
     if body.action == "approve":
+        # Get student's current track
+        student_profile = db.table("student_profiles").select(
+            "current_track"
+        ).eq("user_id", payment.data["student_id"]).single().execute()
+
+        current_track = student_profile.data.get("current_track", "ghl_developer") if student_profile.data else "ghl_developer"
+        duration = TRACK_DURATIONS.get(current_track, 30)
+        plan_started = datetime.utcnow()
+        plan_ends = plan_started + timedelta(days=duration)
+
         db.table("student_profiles").update({
             "status": "approved",
-            "approved_at": "now()",
+            "approved_at": plan_started.isoformat(),
             "approved_by": user["sub"],
-            "current_plan": "normal",
+            "current_plan": current_track,
+            "plan_started_at": plan_started.isoformat(),
+            "plan_ends_at": plan_ends.isoformat(),
             "payment_id": payment_id
         }).eq("user_id", payment.data["student_id"]).execute()
 
