@@ -62,10 +62,8 @@ async def submit_form(data: OnboardingFormData, user=Depends(get_current_user)):
     db = get_supabase_admin()
     student_id = user["sub"]
 
-    # Assess student level — hardcoded, no Claude
     assessment = assess_student_level(data.dict())
 
-    # Save to student_profiles
     try:
         db.table("student_profiles").update({
             "onboarding_status": "completed",
@@ -77,13 +75,13 @@ async def submit_form(data: OnboardingFormData, user=Depends(get_current_user)):
             },
         }).eq("user_id", student_id).execute()
 
-        # Update users table
         db.table("users").update({
             "full_name": data.full_name,
             "phone": data.phone,
             "city": data.city,
             "age": data.age,
             "preferred_language": data.preferred_language,
+            "gender": data.gender,
         }).eq("id", student_id).execute()
 
     except Exception as e:
