@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { useLangStore } from '../../store/langStore'
@@ -17,6 +17,10 @@ export default function Login() {
   const [error, setError] = useState('')
   const [botExpr, setBotExpr] = useState('welcoming')
 
+  // Bot check state
+  const formLoadTime = useRef(Date.now() / 1000)  // Unix timestamp in seconds
+  const [honeypot, setHoneypot] = useState('')     // Must stay empty
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -24,9 +28,13 @@ export default function Login() {
     setBotExpr('thinking')
 
     try {
-      const res = await authAPI.login(form)
-      const { access_token, user_id, role, full_name, preferred_language, status, onboarding_status } = res.data
+      const res = await authAPI.login({
+        ...form,
+        website: honeypot,
+        form_load_time: formLoadTime.current
+      })
 
+      const { access_token, user_id, role, full_name, preferred_language, status, onboarding_status } = res.data
       setAuth({ id: user_id, role, full_name, preferred_language, status, onboarding_status }, access_token)
       setBotExpr('excited')
 
@@ -44,7 +52,8 @@ export default function Login() {
 
     } catch (err) {
       setBotExpr('strict')
-      setError(err.response?.data?.detail || t('error'))
+      const msg = err.response?.data?.detail || t('error')
+      setError(msg)
       setTimeout(() => setBotExpr('welcoming'), 2000)
     } finally {
       setLoading(false)
@@ -88,6 +97,26 @@ export default function Login() {
             <h2 className="text-lg font-semibold text-gray-900 mb-6">{t('login')}</h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+
+              {/* Honeypot — bots fill this, humans don't see it */}
+              <input
+                type="text"
+                name="website"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                style={{
+                  opacity: 0,
+                  position: 'absolute',
+                  left: '-9999px',
+                  height: 0,
+                  width: 0,
+                  overflow: 'hidden'
+                }}
+              />
+
               <div>
                 <label className="text-sm text-gray-600 font-medium mb-1 block">{t('email')}</label>
                 <input
@@ -142,12 +171,17 @@ export default function Login() {
               </button>
             </form>
 
-            <p className="text-center text-sm text-gray-500 mt-5">
-              Account nahi hai?{' '}
-              <Link to="/signup" className="text-brand-600 font-medium hover:underline">
-                {t('signup')}
+            <div className="flex items-center justify-between mt-5">
+              <p className="text-sm text-gray-500">
+                Account nahi hai?{' '}
+                <Link to="/signup" className="text-brand-600 font-medium hover:underline">
+                  {t('signup')}
+                </Link>
+              </p>
+              <Link to="/forgot-password" className="text-sm text-brand-600 font-medium hover:underline">
+                Password bhool gaye?
               </Link>
-            </p>
+            </div>
           </div>
         </motion.div>
       </div>
