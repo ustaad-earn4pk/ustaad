@@ -4,6 +4,7 @@ from core.security import get_current_user
 from core.database import get_supabase_admin
 from ai.computer_basics_curriculum import get_day_curriculum
 from ai.curriculum import get_curriculum
+from modules.tasks.streak_service import update_streak  # ← STREAK IMPORT
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import anthropic
@@ -85,7 +86,18 @@ async def submit_task_text(
     }).execute()
 
     feedback = await grade_task(task.data, body.text_answer, None, student_id)
-    return {"message": "Task submitted!", "feedback": feedback}
+
+    # ← STREAK UPDATE
+    streak_result = await update_streak(student_id)
+
+    return {
+        "message": "Task submitted!",
+        "feedback": feedback,
+        "streak": {
+            "current_streak": streak_result.get("current_streak", 0),
+            "new_badge": streak_result.get("new_badge")
+        }
+    }
 
 
 @router.post("/{task_id}/submit-screenshot")
@@ -130,7 +142,18 @@ async def submit_task_screenshot(
     }).execute()
 
     feedback = await grade_task(task.data, notes or "", screenshot_url, student_id)
-    return {"message": "Task submitted!", "feedback": feedback}
+
+    # ← STREAK UPDATE
+    streak_result = await update_streak(student_id)
+
+    return {
+        "message": "Task submitted!",
+        "feedback": feedback,
+        "streak": {
+            "current_streak": streak_result.get("current_streak", 0),
+            "new_badge": streak_result.get("new_badge")
+        }
+    }
 
 
 async def grade_task(task: dict, submission_text: str, screenshot_url: Optional[str], student_id: str) -> dict:
