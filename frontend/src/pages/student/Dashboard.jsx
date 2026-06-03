@@ -37,7 +37,6 @@ const EXPIRY_BANNERS = {
   grace:     { bg: 'bg-red-50 border-red-300', text: 'text-red-900', sub: 'text-red-700', icon: '⛔', label: 'Grace Period' },
 }
 
-// Badge config
 const BADGE_CONFIG = {
   streak_3:  { emoji: '🔥', label: '3 Day Streak' },
   streak_7:  { emoji: '⚡', label: '7 Day Streak' },
@@ -53,12 +52,16 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(null)
   const [payment, setPayment] = useState(null)
   const [expiry, setExpiry] = useState(null)
-  const [streakWarning, setStreakWarning] = useState(null)  // ← NEW
+  const [streakWarning, setStreakWarning] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const name = user?.full_name?.split(' ')[0] || 'Student'
 
   useEffect(() => {
+    if (user?.role === 'admin' || user?.role === 'super_admin') {
+      navigate('/admin', { replace: true })
+      return
+    }
     loadData()
   }, [])
 
@@ -68,12 +71,12 @@ export default function Dashboard() {
         studentAPI.getProfile(),
         paymentAPI.getMyStatus(),
         studentAPI.getExpiryStatus(),
-        studentAPI.getStreakWarning(),  // ← NEW
+        studentAPI.getStreakWarning(),
       ])
       setProfile(profileRes.data)
       if (paymentRes.data?.length > 0) setPayment(paymentRes.data[0])
       setExpiry(expiryRes.data)
-      setStreakWarning(streakRes.data)  // ← NEW
+      setStreakWarning(streakRes.data)
     } catch (err) {
       console.error(err)
     } finally {
@@ -91,7 +94,6 @@ export default function Dashboard() {
   const nextTrackName = TRACK_NAMES[nextTrack] || nextTrack
   const bannerConfig = expiry ? EXPIRY_BANNERS[expiry.expiry_status] : null
 
-  // Latest earned badge
   const badges = profile?.streak_badges || []
   const latestBadge = badges.length > 0 ? badges[badges.length - 1] : null
 
@@ -166,8 +168,7 @@ export default function Dashboard() {
                 </div>
               </div>
               {!isLastLevel && nextTrack && (
-                <button
-                  onClick={() => navigate('/renewal')}
+                <button onClick={() => navigate('/renewal')}
                   className="mt-3 w-full py-2 px-4 bg-brand-400 text-white text-sm font-semibold rounded-xl">
                   🚀 Start Next Module: {nextTrackName}
                 </button>
@@ -266,8 +267,6 @@ export default function Dashboard() {
               <p className="text-lg font-bold text-brand-600">Level {profile?.skill_level || 1}</p>
             </div>
           </div>
-
-          {/* Latest badge — sirf agar earned hai */}
           {latestBadge && (
             <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-2">
               <span className="text-xl">{latestBadge.emoji}</span>
