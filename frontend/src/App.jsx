@@ -9,6 +9,8 @@ import Chat from './pages/student/Chat'
 import Tasks, { TaskDetail } from './pages/student/Tasks'
 import Onboarding from './pages/student/Onboarding'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import ForgotPassword from './pages/student/ForgotPassword'
+import ResetPassword from './pages/student/ResetPassword'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +44,11 @@ export default function App() {
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
           <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/* Password reset — public, no auth needed */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
           <Route path="/pending" element={<ProtectedRoute><Pending /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
