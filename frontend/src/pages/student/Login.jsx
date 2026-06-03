@@ -25,14 +25,16 @@ export default function Login() {
 
     try {
       const res = await authAPI.login(form)
-      const { access_token, user_id, role, full_name, preferred_language, status } = res.data
+      const { access_token, user_id, role, full_name, preferred_language, status, onboarding_status } = res.data
 
-      setAuth({ id: user_id, role, full_name, preferred_language, status }, access_token)
+      setAuth({ id: user_id, role, full_name, preferred_language, status, onboarding_status }, access_token)
       setBotExpr('excited')
 
       setTimeout(() => {
         if (role === 'admin') {
           navigate('/admin')
+        } else if (onboarding_status !== 'completed') {
+          navigate('/onboarding')
         } else if (status === 'pending') {
           navigate('/pending')
         } else {
@@ -51,15 +53,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-50 to-white flex flex-col">
-
-      {/* Header */}
       <div className="flex justify-end p-4">
         <LanguageSwitcher />
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10">
-
-        {/* Bot */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -80,7 +78,6 @@ export default function Login() {
           </p>
         </motion.div>
 
-        {/* Form */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
