@@ -91,3 +91,15 @@ async def get_my_profile(user=Depends(get_current_user)):
     u = db.table("users").select("*").eq("id", user["sub"]).single().execute()
     p = db.table("student_profiles").select("*").eq("user_id", user["sub"]).single().execute()
     return {**u.data, **p.data}
+
+from modules.students.expiry import check_and_update_expiry, check_course_completion
+
+# STUDENT — expiry status check
+@router.get("/expiry-status")
+async def get_expiry_status(user=Depends(get_current_user)):
+    return await check_and_update_expiry(user["sub"])
+
+# STUDENT — course completion check
+@router.post("/check-completion/{course_id}")
+async def trigger_completion_check(course_id: str, user=Depends(get_current_user)):
+    return await check_course_completion(user["sub"], course_id)
