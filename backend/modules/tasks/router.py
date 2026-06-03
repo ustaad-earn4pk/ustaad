@@ -140,6 +140,17 @@ async def grade_task(task: dict, submission_text: str, screenshot_url: Optional[
         from core.config import settings
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
+        # Student ki language fetch karo
+        user_data = db.table("users").select("preferred_language").eq("id", student_id).single().execute()
+        preferred_language = user_data.data.get("preferred_language", "en") if user_data.data else "en"
+
+        if preferred_language == "ur_roman":
+            lang_instruction = "STRICTLY respond in Roman Urdu only (Urdu written in English letters). Every single word must be Roman Urdu. Example: 'Bohat acha kiya, lekin aur mehnat chahiye.' Never mix English sentences."
+        elif preferred_language == "ur_nastaliq":
+            lang_instruction = "STRICTLY respond in Urdu script only (اردو). Example: 'بہت اچھا کام کیا۔' Never mix English."
+        else:
+            lang_instruction = "STRICTLY respond in English only. Do not use any Urdu words."
+
         guidelines = task.get("guidelines_en", [])
         if isinstance(guidelines, list):
             guidelines_text = "\n".join([f"- {g}" for g in guidelines])
@@ -147,6 +158,8 @@ async def grade_task(task: dict, submission_text: str, screenshot_url: Optional[
             guidelines_text = str(guidelines)
 
         prompt_text = f"""You are USTAAD, a strict but caring Pakistani mentor grading a student task.
+
+LANGUAGE RULE — MOST IMPORTANT: {lang_instruction}
 
 Task: {task.get('title', 'Task')}
 Task Description: {task.get('description', '')}
@@ -175,12 +188,11 @@ IMPORTANT: Plain text only. No markdown. No asterisks. No bold.
 
 Format exactly as:
 SCORE: [number 0-100]
-WELL_DONE: [specific things done correctly, or "Nothing substantial" if score below 30]
+WELL_DONE: [specific things done correctly]
 IMPROVE: [exact steps missing or wrong]
-MOTIVATION: [honest message — firm if needed, warm if deserved — in Roman Urdu or English]
+MOTIVATION: [honest message — firm if needed, warm if deserved]
 PRO_TIP: [one practical GHL/digital skills tip]"""
 
-        # Build messages with image if available
         messages_content = []
 
         if screenshot_url:
@@ -190,7 +202,6 @@ PRO_TIP: [one practical GHL/digital skills tip]"""
                     if img_response.status_code == 200:
                         img_base64 = base64.standard_b64encode(img_response.content).decode("utf-8")
                         content_type = img_response.headers.get("content-type", "image/jpeg")
-                        # Ensure valid media type
                         if content_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
                             content_type = "image/jpeg"
                         messages_content = [
