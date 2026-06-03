@@ -23,14 +23,14 @@ const queryClient = new QueryClient({
 function ProtectedRoute({ children, requireAdmin = false }) {
   const { isAuthenticated, user } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (requireAdmin && user?.role !== 'admin') return <Navigate to="/dashboard" replace />
+  if (requireAdmin && user?.role !== 'admin' && user?.role !== 'super_admin') return <Navigate to="/dashboard" replace />
   return children
 }
 
 function PublicRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore()
   if (isAuthenticated) {
-    if (user?.role === 'admin') return <Navigate to="/admin" replace />
+    if (user?.role === 'admin' || user?.role === 'super_admin') return <Navigate to="/admin" replace />
     if (user?.onboarding_status !== 'completed') return <Navigate to="/onboarding" replace />
     if (user?.status === 'pending') return <Navigate to="/pending" replace />
     return <Navigate to="/dashboard" replace />
@@ -46,10 +46,8 @@ export default function App() {
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
           <Route path="/" element={<Navigate to="/login" replace />} />
-          {/* Password reset — public */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          {/* Protected routes */}
           <Route path="/pending" element={<ProtectedRoute><Pending /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
