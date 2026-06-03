@@ -61,6 +61,11 @@ export const courseAPI = {
   getPlans: () => api.get('/courses/plans'),
   getAssessment: () => api.get('/courses/assessment'),
 }
+export const studentAPI = {
+  getProfile: () => api.get('/students/me'),
+  updateProfile: (data) => api.put('/students/me/profile', data),
+  getExpiryStatus: () => api.get('/students/expiry-status'),  // ADD THIS
+}
 export const adminAPI = {
   getDashboard: () => api.get('/admin/dashboard'),
   getStudents: (status) => api.get(`/students/all${status ? `?status=${status}` : ''}`),
