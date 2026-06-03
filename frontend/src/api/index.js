@@ -1,10 +1,8 @@
 import axios from 'axios'
-
 const api = axios.create({
   baseURL: 'http://localhost:8000/api/v1',
   timeout: 30000,
 })
-
 api.interceptors.request.use((config) => {
   const auth = JSON.parse(localStorage.getItem('ustaad-auth') || '{}')
   const token = auth?.state?.token
@@ -13,7 +11,6 @@ api.interceptors.request.use((config) => {
   }
   return config
 })
-
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -26,38 +23,35 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
-
 export const authAPI = {
   login: (data) => api.post('/auth/login', data),
   signup: (data) => api.post('/auth/signup', data),
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
   resetPassword: (data) => api.post('/auth/reset-password', data),
 }
-
 export const studentAPI = {
   getProfile: () => api.get('/students/me'),
   updateProfile: (data) => api.put('/students/me/profile', data),
   getExpiryStatus: () => api.get('/students/expiry-status'),
+  getStreakWarning: () => api.get('/students/streak-warning'),  // ← NEW
 }
-
 export const onboardingAPI = {
   start: () => api.post('/onboarding/start'),
   sendMessage: (data) => api.post('/onboarding/message', data),
   getStatus: () => api.get('/onboarding/status'),
   submitForm: (data) => api.post('/onboarding/submit-form', data),
 }
-
 export const chatAPI = {
   send: (data) => api.post('/chat/send', data),
   getHistory: () => api.get('/chat/history'),
 }
-
 export const taskAPI = {
   getMyTasks: () => api.get('/tasks/my'),
   getTask: (id) => api.get(`/tasks/${id}`),
-  submit: (taskId, data) => api.post(`/tasks/${taskId}/submit`, data),
+  getTodayTask: () => api.get('/tasks/today'),                                          // ← NEW
+  submitText: (taskId, data) => api.post(`/tasks/${taskId}/submit-text`, data),         // ← NEW
+  submitScreenshot: (taskId, formData) => api.post(`/tasks/${taskId}/submit-screenshot`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }), // ← NEW
 }
-
 export const paymentAPI = {
   getPlans: () => api.get('/payments/plans'),
   getAccountInfo: () => api.get('/payments/account-info'),
@@ -65,14 +59,12 @@ export const paymentAPI = {
   submitWithFile: (formData) => api.post('/payments/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getMyStatus: () => api.get('/payments/my-payments'),
 }
-
 export const courseAPI = {
   getMyCourses: () => api.get('/courses/my'),
   getCourse: (id) => api.get(`/courses/${id}`),
   getPlans: () => api.get('/courses/plans'),
   getAssessment: () => api.get('/courses/assessment'),
 }
-
 export const adminAPI = {
   getDashboard: () => api.get('/admin/dashboard'),
   getStudents: (status) => api.get(`/students/all${status ? `?status=${status}` : ''}`),
@@ -88,5 +80,4 @@ export const adminAPI = {
   reviewPayment: (id, data) => api.post(`/payments/admin/${id}/review`, data),
   getCosts: () => api.get('/admin/costs'),
 }
-
 export default api
