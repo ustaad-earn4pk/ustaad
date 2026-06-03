@@ -58,15 +58,27 @@ export const paymentAPI = {
   submit: (data) => api.post('/payments/submit', data),
   submitWithFile: (formData) => api.post('/payments/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getMyStatus: () => api.get('/payments/my-payments'),
-  getRenewalOptions: () => api.get('/payments/renewal-options'),                                                                        // ← NEW
-  submitRenewal: (formData) => api.post('/payments/submit-renewal', formData, { headers: { 'Content-Type': 'multipart/form-data' } }), // ← NEW
-  getMyRenewalStatus: () => api.get('/payments/my-renewal-status'),                                                                    // ← NEW
+  getRenewalOptions: () => api.get('/payments/renewal-options'),
+  submitRenewal: (formData) => api.post('/payments/submit-renewal', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getMyRenewalStatus: () => api.get('/payments/my-renewal-status'),
 }
 export const courseAPI = {
   getMyCourses: () => api.get('/courses/my'),
   getCourse: (id) => api.get(`/courses/${id}`),
   getPlans: () => api.get('/courses/plans'),
   getAssessment: () => api.get('/courses/assessment'),
+}
+export const supportAPI = {
+  sendMessage: (data) => api.post('/support/send', data),
+  getMessages: () => api.get('/support/messages'),
+  getUnreadCount: () => api.get('/support/unread-count'),
+  // Admin
+  getConversations: () => api.get('/support/admin/conversations'),
+  getStudentMessages: (studentId) => api.get(`/support/admin/messages/${studentId}`),
+  replyToStudent: (studentId, data) => api.post(`/support/admin/reply/${studentId}`, data),
+  assignStudent: (data) => api.post('/support/admin/assign', data),
+  unassignStudent: (data) => api.delete('/support/admin/unassign', { data }),
+  getAdminsList: () => api.get('/support/admin/admins-list'),
 }
 export const adminAPI = {
   getDashboard: () => api.get('/admin/dashboard'),
