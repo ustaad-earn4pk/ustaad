@@ -12,6 +12,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import ForgotPassword from './pages/student/ForgotPassword'
 import ResetPassword from './pages/student/ResetPassword'
 import Profile from './pages/student/Profile'
+import Renewal from './pages/student/Renewal'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,11 +46,9 @@ export default function App() {
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
           <Route path="/" element={<Navigate to="/login" replace />} />
-
           {/* Password reset — public */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-
           {/* Protected routes */}
           <Route path="/pending" element={<ProtectedRoute><Pending /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -58,6 +57,7 @@ export default function App() {
           <Route path="/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/renewal" element={<ProtectedRoute><Renewal /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
