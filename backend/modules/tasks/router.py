@@ -7,6 +7,8 @@ from ai.curriculum import get_curriculum
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import anthropic
+import httpx
+import base64
 import logging
 import uuid
 
@@ -73,9 +75,7 @@ async def submit_task_text(
     if task.data["status"] == "graded":
         raise HTTPException(status_code=400, detail="Already submitted")
 
-    db.table("tasks").update({
-        "status": "submitted",
-    }).eq("id", task_id).execute()
+    db.table("tasks").update({"status": "submitted"}).eq("id", task_id).execute()
 
     db.table("submissions").insert({
         "task_id": task_id,
@@ -85,7 +85,6 @@ async def submit_task_text(
     }).execute()
 
     feedback = await grade_task(task.data, body.text_answer, None, student_id)
-
     return {"message": "Task submitted!", "feedback": feedback}
 
 
@@ -131,7 +130,6 @@ async def submit_task_screenshot(
     }).execute()
 
     feedback = await grade_task(task.data, notes or "", screenshot_url, student_id)
-
     return {"message": "Task submitted!", "feedback": feedback}
 
 
@@ -148,15 +146,15 @@ async def grade_task(task: dict, submission_text: str, screenshot_url: Optional[
         else:
             guidelines_text = str(guidelines)
 
-        prompt = f"""You are USTAAD, an AI learning assistant grading a student task.
+        prompt_text = f"""You are USTAAD, an AI learning assistant grading a student task.
 
 Task: {task.get('title', 'Task')}
 Task Description: {task.get('description', '')}
 Guidelines: {guidelines_text}
-Student Submission: {submission_text}
-Screenshot submitted: {'Yes' if screenshot_url else 'No'}
+Student Notes: {submission_text}
 
 Grade this submission (0-100) and provide feedback.
+If a screenshot is provided, examine it carefully and grade based on actual work shown.
 Be encouraging, warm, like a Pakistani mentor.
 IMPORTANT: Reply in plain text only. No markdown, no bold, no asterisks.
 
@@ -167,10 +165,42 @@ IMPROVE: [what to improve]
 MOTIVATION: [motivational message in Roman Urdu or English]
 PRO_TIP: [extra GHL/digital skills tip]"""
 
+        # Build messages with image if available
+        messages_content = []
+
+        if screenshot_url:
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as http_client:
+                    img_response = await http_client.get(screenshot_url)
+                    if img_response.status_code == 200:
+                        img_base64 = base64.standard_b64encode(img_response.content).decode("utf-8")
+                        content_type = img_response.headers.get("content-type", "image/jpeg")
+                        # Ensure valid media type
+                        if content_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+                            content_type = "image/jpeg"
+                        messages_content = [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": content_type,
+                                    "data": img_base64,
+                                }
+                            },
+                            {"type": "text", "text": prompt_text}
+                        ]
+                    else:
+                        messages_content = [{"type": "text", "text": prompt_text}]
+            except Exception as e:
+                logger.error(f"Image fetch failed: {e}")
+                messages_content = [{"type": "text", "text": prompt_text}]
+        else:
+            messages_content = [{"type": "text", "text": prompt_text}]
+
         response = client.messages.create(
             model="claude-haiku-4-5",
-            max_tokens=500,
-            messages=[{"role": "user", "content": prompt}]
+            max_tokens=600,
+            messages=[{"role": "user", "content": messages_content}]
         )
 
         feedback_text = response.content[0].text
