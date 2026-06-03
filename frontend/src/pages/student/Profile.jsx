@@ -14,6 +14,14 @@ const LANGUAGES = [
   { code: 'ur_roman', label: 'Roman Urdu' },
 ]
 
+// All possible badges in order
+const ALL_BADGES = [
+  { id: 'streak_3',  emoji: '🔥', label: '3 Day Streak',  days: 3  },
+  { id: 'streak_7',  emoji: '⚡', label: '7 Day Streak',  days: 7  },
+  { id: 'streak_14', emoji: '💪', label: '14 Day Streak', days: 14 },
+  { id: 'streak_30', emoji: '🏆', label: '30 Day Streak', days: 30 },
+]
+
 export default function Profile() {
   const { user, logout, setAuth } = useAuthStore()
   const { t, setLanguage } = useLangStore()
@@ -94,6 +102,9 @@ export default function Profile() {
     )
   }
 
+  const earnedBadges = profile?.streak_badges || []
+  const earnedIds = earnedBadges.map(b => b.id)
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-4 safe-top">
@@ -112,13 +123,20 @@ export default function Profile() {
           <div className="flex items-center gap-2 mt-2">
             <span className="text-xs bg-brand-50 text-brand-700 px-3 py-1 rounded-full font-medium">Level {profile?.skill_level || 1}</span>
             <span className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-medium">{profile?.total_points || 0} pts</span>
+            <span className="text-xs bg-orange-50 text-orange-600 px-3 py-1 rounded-full font-medium">🔥 {profile?.current_streak || 0} day streak</span>
           </div>
         </motion.div>
 
+        {/* Tabs — Achievements tab added */}
         <div className="flex gap-2 bg-gray-100 p-1 rounded-2xl">
-          {[{ key: 'basic', label: 'Basic Info' }, { key: 'education', label: 'Education' }, { key: 'portfolio', label: 'Portfolio' }].map((tab) => (
+          {[
+            { key: 'basic',        label: 'Basic Info'    },
+            { key: 'education',    label: 'Education'     },
+            { key: 'portfolio',    label: 'Portfolio'     },
+            { key: 'achievements', label: '🏅 Badges'    },
+          ].map((tab) => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all ${activeTab === tab.key ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`flex-1 py-2 text-xs font-medium rounded-xl transition-all ${activeTab === tab.key ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
               {tab.label}
             </button>
           ))}
@@ -189,14 +207,68 @@ export default function Profile() {
           </motion.div>
         )}
 
-        {error && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error}</motion.div>}
-        {success && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-green-50 text-green-600 text-sm px-4 py-3 rounded-2xl text-center">✅ Profile update ho gaya!</motion.div>}
+        {/* Achievements Tab */}
+        {activeTab === 'achievements' && (
+          <motion.div {...fadeUp} className="space-y-3">
 
-        <button onClick={handleSave} disabled={saving} className="btn-primary w-full flex items-center justify-center gap-2">
-          {saving ? (
-            <><motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />Saving...</>
-          ) : 'Save Changes'}
-        </button>
+            {/* Streak summary */}
+            <div className="card flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500">Current Streak</p>
+                <p className="text-2xl font-bold text-gray-900">🔥 {profile?.current_streak || 0} days</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">Longest Streak</p>
+                <p className="text-2xl font-bold text-brand-600">⚡ {profile?.longest_streak || 0} days</p>
+              </div>
+            </div>
+
+            {/* Badges grid */}
+            <div className="card">
+              <p className="text-sm font-semibold text-gray-700 mb-3">Streak Badges</p>
+              <div className="grid grid-cols-2 gap-3">
+                {ALL_BADGES.map((badge) => {
+                  const earned = earnedIds.includes(badge.id)
+                  const earnedData = earnedBadges.find(b => b.id === badge.id)
+                  return (
+                    <div key={badge.id}
+                      className={`rounded-2xl p-3 text-center border transition-all ${earned ? 'bg-brand-50 border-brand-200' : 'bg-gray-50 border-gray-100 opacity-40'}`}>
+                      <p className="text-3xl mb-1">{badge.emoji}</p>
+                      <p className={`text-xs font-semibold ${earned ? 'text-brand-700' : 'text-gray-400'}`}>{badge.label}</p>
+                      {earned && earnedData?.earned_at && (
+                        <p className="text-xs text-gray-400 mt-1">{earnedData.earned_at}</p>
+                      )}
+                      {!earned && (
+                        <p className="text-xs text-gray-400 mt-1">{badge.days} din ka streak chahiye</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {earnedBadges.length === 0 && (
+              <div className="text-center py-4">
+                <p className="text-3xl mb-2">🎯</p>
+                <p className="text-sm text-gray-500">Abhi koi badge earn nahi hua</p>
+                <p className="text-xs text-gray-400 mt-1">3 din streak banao aur pehla badge lo!</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Save button — achievements tab pe nahi dikhega */}
+        {activeTab !== 'achievements' && (
+          <>
+            {error && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error}</motion.div>}
+            {success && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-green-50 text-green-600 text-sm px-4 py-3 rounded-2xl text-center">✅ Profile update ho gaya!</motion.div>}
+            <button onClick={handleSave} disabled={saving} className="btn-primary w-full flex items-center justify-center gap-2">
+              {saving ? (
+                <><motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />Saving...</>
+              ) : 'Save Changes'}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 safe-bottom">
