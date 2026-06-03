@@ -1,28 +1,31 @@
 from core.database import get_supabase_admin
 from core.security import create_access_token
 from fastapi import HTTPException
+from typing import Optional
 import logging
 import httpx
 import time
 
+logger = logging.getLogger(__name__)
+
+SUPABASE_URL = "https://qhxhetjspjzdbpbeucfh.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_4Swh9me3ZBRvz6fzwV-dWQ_TnDN12dX"
+
+
 def check_bot(website: Optional[str], form_load_time: Optional[float]):
     """Honeypot + time check. Raises HTTPException if bot detected."""
-    # Honeypot — agar koi value hai to bot hai
     if website:
-        logger.warning(f"Bot detected via honeypot — website field filled: {website}")
+        logger.warning(f"Bot detected via honeypot — website field: {website}")
         raise HTTPException(status_code=400, detail="Invalid request.")
-    
-    # Time check — agar form 2 second se kam mein submit hua
     if form_load_time is not None:
         elapsed = time.time() - form_load_time
         if elapsed < 2.0:
             logger.warning(f"Bot detected via time check — elapsed: {elapsed:.2f}s")
             raise HTTPException(status_code=400, detail="Invalid request.")
-logger = logging.getLogger(__name__)
-SUPABASE_URL = "https://qhxhetjspjzdbpbeucfh.supabase.co"
-SUPABASE_ANON_KEY = "sb_publishable_4Swh9me3ZBRvz6fzwV-dWQ_TnDN12dX"
+
 
 async def signup(data) -> dict:
+    check_bot(data.website, data.form_load_time)
     db = get_supabase_admin()
     user_id = None
     try:
@@ -55,6 +58,8 @@ async def signup(data) -> dict:
             "message": "Account created successfully.",
             "user_id": user_id
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Signup error: {e}")
         if user_id:
@@ -64,7 +69,9 @@ async def signup(data) -> dict:
                 pass
         raise HTTPException(status_code=400, detail=str(e))
 
+
 async def login(data) -> dict:
+    check_bot(data.website, data.form_load_time)
     db = get_supabase_admin()
     try:
         async with httpx.AsyncClient() as client:
@@ -77,11 +84,11 @@ async def login(data) -> dict:
                 json={"email": data.email, "password": data.password}
             )
         if response.status_code != 200:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=401, detail="Invalid email or password.")
 
         user_result = db.table("users").select("*").eq("email", data.email).execute()
         if not user_result.data:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="User not found.")
 
         user_data = user_result.data[0]
         user_id = user_data["id"]
@@ -123,4 +130,45 @@ async def login(data) -> dict:
         raise
     except Exception as e:
         logger.error(f"Login error: {e}")
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+
+async def forgot_password(data) -> dict:
+    check_bot(data.website, data.form_load_time)
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{SUPABASE_URL}/auth/v1/recover",
+                headers={
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Content-Type": "application/json"
+                },
+                json={"email": data.email}
+            )
+        return {"message": "If this email exists, a reset link has been sent."}
+    except Exception as e:
+        logger.error(f"Forgot password error: {e}")
+        return {"message": "If this email exists, a reset link has been sent."}
+
+
+async def reset_password(data) -> dict:
+    check_bot(data.website, data.form_load_time)
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"{SUPABASE_URL}/auth/v1/user",
+                headers={
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Authorization": f"Bearer {data.access_token}",
+                    "Content-Type": "application/json"
+                },
+                json={"password": data.new_password}
+            )
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Invalid or expired reset link.")
+        return {"message": "Password updated successfully."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reset password error: {e}")
+        raise HTTPException(status_code=400, detail="Password reset failed.")
