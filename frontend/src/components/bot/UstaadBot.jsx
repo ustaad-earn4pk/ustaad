@@ -1,30 +1,14 @@
 import { motion, AnimatePresence } from 'framer-motion'
 
 const EXPRESSIONS = {
-  welcoming: {
-    eyes: 'happy', mouth: 'big-smile', color: '#1D9E75', animation: 'bob', label: '🤗'
-  },
-  excited: {
-    eyes: 'star', mouth: 'open-smile', color: '#534AB7', animation: 'pulse', label: '🤩'
-  },
-  thinking: {
-    eyes: 'thinking', mouth: 'neutral', color: '#888780', animation: 'none', label: '🤔'
-  },
-  encouraging: {
-    eyes: 'determined', mouth: 'smile', color: '#BA7517', animation: 'none', label: '💪'
-  },
-  strict: {
-    eyes: 'stern', mouth: 'straight', color: '#993C1D', animation: 'shake', label: '😤'
-  },
-  celebrating: {
-    eyes: 'closed-happy', mouth: 'big-smile', color: '#0F6E56', animation: 'bob', label: '🎉'
-  },
-  typing: {
-    eyes: 'normal', mouth: 'slight-smile', color: '#1D9E75', animation: 'none', label: '⌨️'
-  },
-  cool: {
-    eyes: 'glasses', mouth: 'slight-smile', color: '#1D9E75', animation: 'bob', label: '😎'
-  },
+  welcoming: { eyes: 'happy', mouth: 'big-smile', color: '#1D9E75', animation: 'bob', label: '🤗' },
+  excited: { eyes: 'star', mouth: 'open-smile', color: '#534AB7', animation: 'pulse', label: '🤩' },
+  thinking: { eyes: 'thinking', mouth: 'neutral', color: '#888780', animation: 'none', label: '🤔' },
+  encouraging: { eyes: 'determined', mouth: 'smile', color: '#BA7517', animation: 'none', label: '💪' },
+  strict: { eyes: 'stern', mouth: 'straight', color: '#993C1D', animation: 'shake', label: '😤' },
+  celebrating: { eyes: 'closed-happy', mouth: 'big-smile', color: '#0F6E56', animation: 'bob', label: '🎉' },
+  typing: { eyes: 'normal', mouth: 'slight-smile', color: '#1D9E75', animation: 'none', label: '⌨️' },
+  cool: { eyes: 'glasses', mouth: 'slight-smile', color: '#1D9E75', animation: 'bob', label: '😎' },
 }
 
 const animations = {
@@ -32,105 +16,6 @@ const animations = {
   pulse: { scale: [1, 1.06, 1], transition: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } },
   shake: { rotate: [0, -3, 3, -3, 3, 0], transition: { duration: 0.6, repeat: Infinity } },
   none: {}
-}
-
-function MaleBot({ expr, expression, size }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Body */}
-      <path d="M14,120 Q14,100 50,95 Q86,100 86,120 L88,130 L12,130 Z" fill={expr.color} />
-      {/* Shirt */}
-      <path d="M40,95 L50,108 L60,95" fill="#E8DCC8" />
-      {/* Neck */}
-      <rect x="43" y="82" width="14" height="16" rx="4" fill="#D4956A" />
-      {/* Head */}
-      <ellipse cx="50" cy="66" rx="28" ry="28" fill="#D4956A" />
-      {/* Hair */}
-      <path d="M22,50 Q28,34 50,32 Q72,34 78,50 Q70,42 62,44 Q50,40 38,44 Q28,42 22,50Z" fill="#3D2B1F" />
-      <path d="M22,50 Q18,60 20,70" fill="none" stroke="#3D2B1F" strokeWidth="4" strokeLinecap="round" />
-      <path d="M78,50 Q82,60 80,70" fill="none" stroke="#3D2B1F" strokeWidth="4" strokeLinecap="round" />
-      <path d="M30,38 Q40,34 50,33" fill="none" stroke="#5C3317" strokeWidth="1" opacity="0.4" />
-      <path d="M50,33 Q60,34 70,38" fill="none" stroke="#5C3317" strokeWidth="1" opacity="0.4" />
-      {/* Eyes */}
-      <BotEyes expr={expr} />
-      {/* Mouth */}
-      <BotMouth expr={expr} />
-      {/* Cheeks */}
-      {['welcoming', 'excited', 'celebrating'].includes(expression) && <>
-        <ellipse cx="28" cy="72" rx="6" ry="4" fill="#C0795A" opacity="0.35" />
-        <ellipse cx="72" cy="72" rx="6" ry="4" fill="#C0795A" opacity="0.35" />
-      </>}
-      {/* Celebrating confetti */}
-      {expression === 'celebrating' && <>
-        <rect x="2" y="28" width="7" height="7" rx="1" fill="#FAC775" transform="rotate(30 5 31)" />
-        <rect x="88" y="32" width="6" height="6" rx="1" fill="#E24B4A" transform="rotate(-20 91 35)" />
-        <circle cx="8" cy="72" r="4" fill="#FAC775" />
-        <circle cx="94" cy="68" r="4" fill="#E24B4A" />
-      </>}
-      {/* Thinking bubbles */}
-      {expression === 'thinking' && <>
-        <circle cx="85" cy="44" r="8" fill="none" stroke="#D1D5DB" strokeWidth="1" />
-        <circle cx="96" cy="32" r="5" fill="none" stroke="#D1D5DB" strokeWidth="1" />
-        <circle cx="103" cy="24" r="3" fill="none" stroke="#D1D5DB" strokeWidth="1" />
-        <text x="85" y="48" textAnchor="middle" fontSize="8" fill="#9CA3AF">?</text>
-      </>}
-    </svg>
-  )
-}
-
-function FemaleBot({ expr, expression, size }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Body — pink top */}
-      <path d="M14,120 Q14,100 50,95 Q86,100 86,120 L88,130 L12,130 Z" fill={expr.color} />
-      {/* Dupatta / scarf hint */}
-      <path d="M20,108 Q50,115 80,108" fill="none" stroke="#ffffff" strokeWidth="2" opacity="0.3" />
-      {/* Shirt */}
-      <path d="M40,95 L50,108 L60,95" fill="#F9D5E5" />
-      {/* Neck */}
-      <rect x="43" y="82" width="14" height="16" rx="4" fill="#D4956A" />
-      {/* Head */}
-      <ellipse cx="50" cy="66" rx="28" ry="28" fill="#D4956A" />
-      {/* Hair — long */}
-      <path d="M22,50 Q28,34 50,32 Q72,34 78,50 Q70,42 62,44 Q50,40 38,44 Q28,42 22,50Z" fill="#3D2B1F" />
-      {/* Long hair sides */}
-      <path d="M22,50 Q16,70 18,95" fill="none" stroke="#3D2B1F" strokeWidth="7" strokeLinecap="round" />
-      <path d="M78,50 Q84,70 82,95" fill="none" stroke="#3D2B1F" strokeWidth="7" strokeLinecap="round" />
-      {/* Hair texture */}
-      <path d="M30,38 Q40,34 50,33" fill="none" stroke="#5C3317" strokeWidth="1" opacity="0.4" />
-      <path d="M50,33 Q60,34 70,38" fill="none" stroke="#5C3317" strokeWidth="1" opacity="0.4" />
-      {/* Eyes */}
-      <BotEyes expr={expr} />
-      {/* Eyelashes */}
-      <path d="M32,59 L30,56" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M36,57 L35,54" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M40,58 L40,55" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M56,58 L55,55" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M60,57 L60,54" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M64,59 L65,56" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
-      {/* Mouth */}
-      <BotMouth expr={expr} />
-      {/* Cheeks */}
-      {['welcoming', 'excited', 'celebrating'].includes(expression) && <>
-        <ellipse cx="28" cy="72" rx="6" ry="4" fill="#E8A0B4" opacity="0.5" />
-        <ellipse cx="72" cy="72" rx="6" ry="4" fill="#E8A0B4" opacity="0.5" />
-      </>}
-      {/* Celebrating confetti */}
-      {expression === 'celebrating' && <>
-        <rect x="2" y="28" width="7" height="7" rx="1" fill="#FAC775" transform="rotate(30 5 31)" />
-        <rect x="88" y="32" width="6" height="6" rx="1" fill="#E24B4A" transform="rotate(-20 91 35)" />
-        <circle cx="8" cy="72" r="4" fill="#FAC775" />
-        <circle cx="94" cy="68" r="4" fill="#E24B4A" />
-      </>}
-      {/* Thinking bubbles */}
-      {expression === 'thinking' && <>
-        <circle cx="85" cy="44" r="8" fill="none" stroke="#D1D5DB" strokeWidth="1" />
-        <circle cx="96" cy="32" r="5" fill="none" stroke="#D1D5DB" strokeWidth="1" />
-        <circle cx="103" cy="24" r="3" fill="none" stroke="#D1D5DB" strokeWidth="1" />
-        <text x="85" y="48" textAnchor="middle" fontSize="8" fill="#9CA3AF">?</text>
-      </>}
-    </svg>
-  )
 }
 
 function BotEyes({ expr }) {
@@ -198,16 +83,88 @@ function BotMouth({ expr }) {
   </>
 }
 
+function MaleBot({ expr, expression }) {
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 100 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14,120 Q14,100 50,95 Q86,100 86,120 L88,130 L12,130 Z" fill={expr.color} />
+      <path d="M40,95 L50,108 L60,95" fill="#E8DCC8" />
+      <rect x="43" y="82" width="14" height="16" rx="4" fill="#D4956A" />
+      <ellipse cx="50" cy="66" rx="28" ry="28" fill="#D4956A" />
+      <path d="M22,50 Q28,34 50,32 Q72,34 78,50 Q70,42 62,44 Q50,40 38,44 Q28,42 22,50Z" fill="#3D2B1F" />
+      <path d="M22,50 Q18,60 20,70" fill="none" stroke="#3D2B1F" strokeWidth="4" strokeLinecap="round" />
+      <path d="M78,50 Q82,60 80,70" fill="none" stroke="#3D2B1F" strokeWidth="4" strokeLinecap="round" />
+      <BotEyes expr={expr} />
+      <BotMouth expr={expr} />
+      {['welcoming', 'excited', 'celebrating'].includes(expression) && <>
+        <ellipse cx="28" cy="72" rx="6" ry="4" fill="#C0795A" opacity="0.35" />
+        <ellipse cx="72" cy="72" rx="6" ry="4" fill="#C0795A" opacity="0.35" />
+      </>}
+      {expression === 'celebrating' && <>
+        <rect x="2" y="28" width="7" height="7" rx="1" fill="#FAC775" transform="rotate(30 5 31)" />
+        <rect x="88" y="32" width="6" height="6" rx="1" fill="#E24B4A" transform="rotate(-20 91 35)" />
+        <circle cx="8" cy="72" r="4" fill="#FAC775" />
+        <circle cx="94" cy="68" r="4" fill="#E24B4A" />
+      </>}
+      {expression === 'thinking' && <>
+        <circle cx="85" cy="44" r="8" fill="none" stroke="#D1D5DB" strokeWidth="1" />
+        <circle cx="96" cy="32" r="5" fill="none" stroke="#D1D5DB" strokeWidth="1" />
+        <circle cx="103" cy="24" r="3" fill="none" stroke="#D1D5DB" strokeWidth="1" />
+        <text x="85" y="48" textAnchor="middle" fontSize="8" fill="#9CA3AF">?</text>
+      </>}
+    </svg>
+  )
+}
+
+function FemaleBot({ expr, expression }) {
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 100 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14,120 Q14,100 50,95 Q86,100 86,120 L88,130 L12,130 Z" fill={expr.color} />
+      <path d="M20,108 Q50,115 80,108" fill="none" stroke="#ffffff" strokeWidth="2" opacity="0.3" />
+      <path d="M40,95 L50,108 L60,95" fill="#F9D5E5" />
+      <rect x="43" y="82" width="14" height="16" rx="4" fill="#D4956A" />
+      <ellipse cx="50" cy="66" rx="28" ry="28" fill="#D4956A" />
+      <path d="M22,50 Q28,34 50,32 Q72,34 78,50 Q70,42 62,44 Q50,40 38,44 Q28,42 22,50Z" fill="#3D2B1F" />
+      <path d="M22,50 Q16,70 18,95" fill="none" stroke="#3D2B1F" strokeWidth="7" strokeLinecap="round" />
+      <path d="M78,50 Q84,70 82,95" fill="none" stroke="#3D2B1F" strokeWidth="7" strokeLinecap="round" />
+      <BotEyes expr={expr} />
+      <path d="M32,59 L30,56" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M36,57 L35,54" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M40,58 L40,55" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M56,58 L55,55" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M60,57 L60,54" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M64,59 L65,56" stroke="#3D2B1F" strokeWidth="1.5" strokeLinecap="round" />
+      <BotMouth expr={expr} />
+      {['welcoming', 'excited', 'celebrating'].includes(expression) && <>
+        <ellipse cx="28" cy="72" rx="6" ry="4" fill="#E8A0B4" opacity="0.5" />
+        <ellipse cx="72" cy="72" rx="6" ry="4" fill="#E8A0B4" opacity="0.5" />
+      </>}
+      {expression === 'celebrating' && <>
+        <rect x="2" y="28" width="7" height="7" rx="1" fill="#FAC775" transform="rotate(30 5 31)" />
+        <rect x="88" y="32" width="6" height="6" rx="1" fill="#E24B4A" transform="rotate(-20 91 35)" />
+        <circle cx="8" cy="72" r="4" fill="#FAC775" />
+        <circle cx="94" cy="68" r="4" fill="#E24B4A" />
+      </>}
+      {expression === 'thinking' && <>
+        <circle cx="85" cy="44" r="8" fill="none" stroke="#D1D5DB" strokeWidth="1" />
+        <circle cx="96" cy="32" r="5" fill="none" stroke="#D1D5DB" strokeWidth="1" />
+        <circle cx="103" cy="24" r="3" fill="none" stroke="#D1D5DB" strokeWidth="1" />
+        <text x="85" y="48" textAnchor="middle" fontSize="8" fill="#9CA3AF">?</text>
+      </>}
+    </svg>
+  )
+}
+
 export default function UstaadBot({ expression = 'welcoming', size = 80, showLabel = false, gender = 'male' }) {
   const expr = EXPRESSIONS[expression] || EXPRESSIONS.welcoming
   const anim = animations[expr.animation] || {}
   const isFemale = gender === 'female'
+  const animKey = expression + '-' + gender
 
   return (
     <div className="flex flex-col items-center gap-1">
       <AnimatePresence mode="wait">
         <motion.div
-          key={expression}
+          key={animKey}
           animate={anim}
           initial={{ scale: 0.8, opacity: 0 }}
           exit={{ scale: 0.8, opacity: 0 }}
@@ -217,8 +174,8 @@ export default function UstaadBot({ expression = 'welcoming', size = 80, showLab
           className="relative select-none"
         >
           {isFemale
-            ? <FemaleBot expr={expr} expression={expression} size={size} />
-            : <MaleBot expr={expr} expression={expression} size={size} />
+            ? <FemaleBot expr={expr} expression={expression} />
+            : <MaleBot expr={expr} expression={expression} />
           }
         </motion.div>
       </AnimatePresence>
