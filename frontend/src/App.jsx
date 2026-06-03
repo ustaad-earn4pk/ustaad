@@ -6,7 +6,7 @@ import Signup from './pages/student/Signup'
 import Pending from './pages/student/Pending'
 import Dashboard from './pages/student/Dashboard'
 import Chat from './pages/student/Chat'
-import Tasks from './pages/student/Tasks'
+import Tasks, { TaskDetail } from './pages/student/Tasks'
 import Onboarding from './pages/student/Onboarding'
 import AdminDashboard from './pages/admin/AdminDashboard'
 
@@ -46,6 +46,7 @@ export default function App() {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
           <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+          <Route path="/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
