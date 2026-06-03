@@ -137,7 +137,7 @@ async def forgot_password(data) -> dict:
     check_bot(data.website, data.form_load_time)
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post(
+            await client.post(
                 f"{SUPABASE_URL}/auth/v1/recover",
                 headers={
                     "apikey": SUPABASE_ANON_KEY,
@@ -145,9 +145,11 @@ async def forgot_password(data) -> dict:
                 },
                 json={"email": data.email}
             )
+        # Always success — email exist kare ya na kare
         return {"message": "If this email exists, a reset link has been sent."}
     except Exception as e:
         logger.error(f"Forgot password error: {e}")
+        # Error leak mat karo
         return {"message": "If this email exists, a reset link has been sent."}
 
 
