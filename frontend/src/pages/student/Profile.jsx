@@ -50,7 +50,6 @@ export default function Profile() {
   const [botExpr, setBotExpr] = useState('cool')
   const [activeTab, setActiveTab] = useState('basic')
 
-  // Report + Certificate state
   const [report, setReport] = useState(null)
   const [reportLoading, setReportLoading] = useState(false)
   const [certificate, setCertificate] = useState(null)
@@ -84,6 +83,29 @@ export default function Profile() {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setError('')
+    setSuccess(false)
+    setBotExpr('thinking')
+    try {
+      await studentAPI.updateProfile({ ...form, age: form.age ? parseInt(form.age) : null })
+      setSuccess(true)
+      setBotExpr('celebrating')
+      if (form.preferred_language !== user?.preferred_language) {
+        setLanguage(form.preferred_language)
+        setAuth({ ...user, preferred_language: form.preferred_language }, null)
+      }
+      setTimeout(() => setBotExpr('cool'), 3000)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Update fail ho gaya.')
+      setBotExpr('strict')
+      setTimeout(() => setBotExpr('cool'), 2000)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -212,7 +234,6 @@ export default function Profile() {
           </div>
         </motion.div>
 
-        {/* Tabs */}
         <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-2xl">
           {[
             { key: 'basic',        label: 'Basic'      },
@@ -334,7 +355,6 @@ export default function Profile() {
           </motion.div>
         )}
 
-        {/* Progress Report Tab */}
         {activeTab === 'report' && (
           <motion.div {...fadeUp} className="space-y-3">
             {reportLoading ? (
@@ -344,7 +364,6 @@ export default function Profile() {
               </div>
             ) : report ? (
               <>
-                {/* Student Info */}
                 <div className="card">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Student Info</p>
                   <div className="space-y-1 text-sm">
@@ -353,8 +372,6 @@ export default function Profile() {
                     <div className="flex justify-between"><span className="text-gray-500">Level</span><span className="font-medium">Level {report.profile?.skill_level || 1}</span></div>
                   </div>
                 </div>
-
-                {/* Course */}
                 <div className="card">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Current Course</p>
                   <p className="font-bold text-gray-900">{TRACK_NAMES[report.course?.track] || 'N/A'}</p>
@@ -363,8 +380,6 @@ export default function Profile() {
                   </div>
                   <p className="text-xs text-gray-400 mt-1">{report.course?.progress_pct || 0}% complete</p>
                 </div>
-
-                {/* Performance */}
                 <div className="card">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Performance</p>
                   <div className="grid grid-cols-2 gap-3">
@@ -381,8 +396,6 @@ export default function Profile() {
                     ))}
                   </div>
                 </div>
-
-                {/* Streak */}
                 <div className="card flex items-center justify-between">
                   <div>
                     <p className="text-xs text-gray-500">Current Streak</p>
@@ -393,8 +406,6 @@ export default function Profile() {
                     <p className="text-xl font-bold text-brand-600">⚡ {report.profile?.longest_streak || 0} days</p>
                   </div>
                 </div>
-
-                {/* Task Breakdown */}
                 {report.tasks?.length > 0 && (
                   <div className="card">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Task Breakdown</p>
@@ -415,9 +426,7 @@ export default function Profile() {
                     </div>
                   </div>
                 )}
-
-                <button onClick={downloadReport}
-                  className="btn-primary w-full flex items-center justify-center gap-2">
+                <button onClick={downloadReport} className="btn-primary w-full flex items-center justify-center gap-2">
                   📥 Download Report
                 </button>
               </>
@@ -430,12 +439,10 @@ export default function Profile() {
           </motion.div>
         )}
 
-        {/* Certificate Tab */}
         {activeTab === 'certificate' && (
           <motion.div {...fadeUp} className="space-y-3">
             {certificate ? (
               <>
-                {/* Certificate Card */}
                 <div className="card border-2 border-brand-200 bg-gradient-to-br from-brand-50 to-white">
                   <div className="text-center py-4">
                     <p className="text-4xl mb-2">{TROPHY_CONFIG[certificate.trophy]?.emoji || '🎓'}</p>
@@ -443,31 +450,24 @@ export default function Profile() {
                     <h2 className="text-xl font-bold text-gray-900">{profile?.full_name}</h2>
                     <p className="text-sm text-gray-500 mt-1">has successfully completed</p>
                     <p className="text-base font-bold text-brand-600 mt-1">{TRACK_NAMES[certificate.track] || certificate.track}</p>
-
                     <div className={`inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full ${TROPHY_CONFIG[certificate.trophy]?.bg}`}>
                       <span className="text-sm">{TROPHY_CONFIG[certificate.trophy]?.emoji}</span>
                       <span className={`text-sm font-semibold ${TROPHY_CONFIG[certificate.trophy]?.color}`}>
                         {TROPHY_CONFIG[certificate.trophy]?.label}
                       </span>
                     </div>
-
                     <div className="mt-4 pt-4 border-t border-brand-100">
                       <p className="text-xs text-gray-400">Average Score: <span className="font-semibold text-gray-700">{certificate.average_score}%</span></p>
                       <p className="text-xs text-gray-400 mt-1">Issued: {new Date(certificate.issued_at).toLocaleDateString('en-PK')}</p>
                       <p className="text-xs font-mono text-gray-500 mt-2 bg-gray-50 px-3 py-1 rounded-lg inline-block">{certificate.certificate_number}</p>
                     </div>
-
                     <div className="mt-3">
                       <p className="text-xs text-gray-400">— Yasir Khan, Founder USTAAD —</p>
                       <p className="text-xs text-brand-600 mt-1">ustaad.earn4pk.com</p>
                     </div>
                   </div>
                 </div>
-
-                <button onClick={() => {
-                  const el = document.querySelector('.certificate-content')
-                  window.print()
-                }} className="btn-primary w-full flex items-center justify-center gap-2">
+                <button onClick={() => window.print()} className="btn-primary w-full flex items-center justify-center gap-2">
                   🖨️ Print / Save Certificate
                 </button>
               </>
@@ -476,9 +476,7 @@ export default function Profile() {
                 <p className="text-4xl">🎓</p>
                 <p className="font-semibold text-gray-900">Certificate Available hoga</p>
                 <p className="text-sm text-gray-500">Course complete karo aur certificate issue karo</p>
-                {certError && (
-                  <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-xl">{certError}</p>
-                )}
+                {certError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-xl">{certError}</p>}
                 <button onClick={handleIssueCertificate} disabled={certLoading}
                   className="btn-primary w-full flex items-center justify-center gap-2">
                   {certLoading ? (
@@ -491,7 +489,6 @@ export default function Profile() {
           </motion.div>
         )}
 
-        {/* Save button — sirf edit tabs pe */}
         {['basic', 'education', 'portfolio'].includes(activeTab) && (
           <>
             {error && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error}</motion.div>}
