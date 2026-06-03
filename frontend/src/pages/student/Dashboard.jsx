@@ -11,20 +11,41 @@ const stagger = { animate: { transition: { staggerChildren: 0.07 } } }
 const fadeUp = { initial: { y: 16, opacity: 0 }, animate: { y: 0, opacity: 1 } }
 
 const TRACK_NAMES = {
-  computer_basics:    'Computer & Internet Basics',
-  web_fundamentals:   'Web & Business Basics',
-  ghl_developer:      'GoHighLevel Developer',
-  integration_expert: 'Integration Expert',
+  computer_basics:       'Computer & Internet Basics',
+  web_fundamentals:      'Web & Business Basics',
+  ghl_developer:         'GoHighLevel Developer',
+  integration_expert:    'Integration Expert',
   full_stack_automation: 'Full Stack Automation',
-  client_hunting:     'Client Hunting & Portfolio',
+  client_hunting:        'Client Hunting & Portfolio',
+}
+
+const TRACK_LEVELS = {
+  computer_basics: 1,
+  web_fundamentals: 2,
+  ghl_developer: 3,
+  integration_expert: 4,
+  full_stack_automation: 5,
+  client_hunting: 5,
+}
+
+const LAST_LEVEL = 5
+
+// Expiry banner config
+const EXPIRY_BANNERS = {
+  warning_7: { bg: 'bg-yellow-50 border-yellow-200', text: 'text-yellow-800', sub: 'text-yellow-600', icon: '⚠️', label: 'دن باقی ہیں' },
+  warning_3: { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', sub: 'text-orange-600', icon: '🔔', label: 'دن باقی ہیں' },
+  warning_1: { bg: 'bg-red-50 border-red-200', text: 'text-red-800', sub: 'text-red-600', icon: '🚨', label: 'آخری دن!' },
+  grace:     { bg: 'bg-red-50 border-red-300', text: 'text-red-900', sub: 'text-red-700', icon: '⛔', label: 'Grace Period' },
 }
 
 export default function Dashboard() {
   const { user, logout } = useAuthStore()
   const { t } = useLangStore()
   const navigate = useNavigate()
+
   const [profile, setProfile] = useState(null)
   const [payment, setPayment] = useState(null)
+  const [expiry, setExpiry] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const name = user?.full_name?.split(' ')[0] || 'Student'
@@ -35,12 +56,14 @@ export default function Dashboard() {
 
   async function loadData() {
     try {
-      const [profileRes, paymentRes] = await Promise.all([
+      const [profileRes, paymentRes, expiryRes] = await Promise.all([
         studentAPI.getProfile(),
         paymentAPI.getMyStatus(),
+        studentAPI.getExpiryStatus(),
       ])
       setProfile(profileRes.data)
       if (paymentRes.data?.length > 0) setPayment(paymentRes.data[0])
+      setExpiry(expiryRes.data)
     } catch (err) {
       console.error(err)
     } finally {
@@ -51,6 +74,12 @@ export default function Dashboard() {
   const isApproved = profile?.status === 'approved'
   const currentTrack = profile?.current_track
   const trackName = TRACK_NAMES[currentTrack] || currentTrack
+  const currentLevel = TRACK_LEVELS[currentTrack] || 1
+  const isLastLevel = currentLevel >= LAST_LEVEL
+
+  const nextTrack = expiry?.next_track
+  const nextTrackName = TRACK_NAMES[nextTrack] || nextTrack
+  const bannerConfig = expiry ? EXPIRY_BANNERS[expiry.expiry_status] : null
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -74,6 +103,41 @@ export default function Dashboard() {
       </div>
 
       <motion.div variants={stagger} initial="initial" animate="animate" className="px-5 pt-5 space-y-4">
+
+        {/* Expiry Warning Banner */}
+        {bannerConfig && isApproved && (
+          <motion.div variants={fadeUp}>
+            <div className={`card border ${bannerConfig.bg}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{bannerConfig.icon}</span>
+                  <div>
+                    <p className={`font-semibold text-sm ${bannerConfig.text}`}>
+                      {expiry.expiry_status === 'grace'
+                        ? `Grace period — ${expiry.grace_days_left} din bacha`
+                        : `Subscription khatam hone mein ${expiry.days_left} din bacha`}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${bannerConfig.sub}`}>
+                      {expiry.expiry_status === 'grace'
+                        ? 'Is ke baad access band ho jayega'
+                        : 'Abhi renew karo ya next module lo'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Next module button — sirf agar last level nahi */}
+              {!isLastLevel && nextTrack && (
+                <button
+                  onClick={() => navigate('/pending', { state: { selectedTrack: nextTrack, isRenewal: true } })}
+                  className="mt-3 w-full py-2 px-4 bg-brand-400 text-white text-sm font-semibold rounded-xl"
+                >
+                  🚀 Start Next Module: {nextTrackName}
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Payment Status Card */}
         {payment && (
