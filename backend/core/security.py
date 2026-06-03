@@ -26,6 +26,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     return verify_token(credentials.credentials)
 
 async def get_current_admin(current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") != "admin":
+    if current_user.get("role") not in ["admin", "super_admin"]:  # ← FIXED
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
