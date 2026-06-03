@@ -103,3 +103,44 @@ async def get_expiry_status(user=Depends(get_current_user)):
 @router.post("/check-completion/{course_id}")
 async def trigger_completion_check(course_id: str, user=Depends(get_current_user)):
     return await check_course_completion(user["sub"], course_id)
+
+from pydantic import BaseModel
+from typing import Optional
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    age: Optional[int] = None
+    preferred_language: Optional[str] = None
+    education: Optional[dict] = None
+    portfolio_url: Optional[str] = None
+
+# STUDENT — update own profile
+@router.put("/me/profile")
+async def update_my_profile(data: ProfileUpdateRequest, user=Depends(get_current_user)):
+    db = get_supabase_admin()
+    try:
+        # users table update
+        user_fields = {}
+        if data.full_name: user_fields["full_name"] = data.full_name
+        if data.phone: user_fields["phone"] = data.phone
+        if data.city: user_fields["city"] = data.city
+        if data.age: user_fields["age"] = data.age
+        if data.preferred_language: user_fields["preferred_language"] = data.preferred_language
+
+        if user_fields:
+            db.table("users").update(user_fields).eq("id", user["sub"]).execute()
+
+        # student_profiles table update
+        profile_fields = {}
+        if data.education is not None: profile_fields["education"] = data.education
+        if data.portfolio_url is not None: profile_fields["portfolio_url"] = data.portfolio_url
+
+        if profile_fields:
+            db.table("student_profiles").update(profile_fields).eq("user_id", user["sub"]).execute()
+
+        return {"message": "Profile updated successfully."}
+    except Exception as e:
+        logger.error(f"Profile update error: {e}")
+        raise HTTPException(status_code=400, detail="Profile update failed.")
