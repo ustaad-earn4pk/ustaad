@@ -3,6 +3,21 @@ from core.security import create_access_token
 from fastapi import HTTPException
 import logging
 import httpx
+import time
+
+def check_bot(website: Optional[str], form_load_time: Optional[float]):
+    """Honeypot + time check. Raises HTTPException if bot detected."""
+    # Honeypot — agar koi value hai to bot hai
+    if website:
+        logger.warning(f"Bot detected via honeypot — website field filled: {website}")
+        raise HTTPException(status_code=400, detail="Invalid request.")
+    
+    # Time check — agar form 2 second se kam mein submit hua
+    if form_load_time is not None:
+        elapsed = time.time() - form_load_time
+        if elapsed < 2.0:
+            logger.warning(f"Bot detected via time check — elapsed: {elapsed:.2f}s")
+            raise HTTPException(status_code=400, detail="Invalid request.")
 logger = logging.getLogger(__name__)
 SUPABASE_URL = "https://qhxhetjspjzdbpbeucfh.supabase.co"
 SUPABASE_ANON_KEY = "sb_publishable_4Swh9me3ZBRvz6fzwV-dWQ_TnDN12dX"
