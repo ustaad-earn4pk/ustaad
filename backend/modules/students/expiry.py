@@ -8,18 +8,15 @@ GRACE_PERIOD_DAYS = 1
 
 TRACK_ORDER = [
     "computer_basics",
-    "web_fundamentals", 
+    "web_fundamentals",
     "ghl_developer",
     "integration_expert",
     "full_stack_automation",
     "client_hunting"
 ]
 
-LAST_LEVEL = 5
 
-
-def get_next_track(current_track: str) -> str | None:
-    """Next track return karo — agar last hai to None."""
+def get_next_track(current_track: str):
     try:
         idx = TRACK_ORDER.index(current_track)
         if idx + 1 < len(TRACK_ORDER):
@@ -29,12 +26,7 @@ def get_next_track(current_track: str) -> str | None:
         return None
 
 
-def calculate_expiry_status(plan_ends_at: str, grace_period_ends_at: str | None) -> dict:
-    """
-    Returns:
-        status: 'active' | 'warning_7' | 'warning_3' | 'warning_1' | 'grace' | 'expired'
-        days_left: int
-    """
+def calculate_expiry_status(plan_ends_at: str, grace_period_ends_at=None) -> dict:
     now = datetime.now(timezone.utc)
     ends_at = datetime.fromisoformat(plan_ends_at.replace("Z", "+00:00"))
     days_left = (ends_at - now).days
@@ -48,33 +40,25 @@ def calculate_expiry_status(plan_ends_at: str, grace_period_ends_at: str | None)
     elif days_left >= 1:
         return {"status": "warning_1", "days_left": days_left}
     elif days_left >= 0:
-        # Expired — check grace period
         if grace_period_ends_at:
             grace_ends = datetime.fromisoformat(grace_period_ends_at.replace("Z", "+00:00"))
             if now < grace_ends:
                 grace_left = (grace_ends - now).days
                 return {"status": "grace", "days_left": 0, "grace_days_left": grace_left}
-        # Grace period set nahi — set karo
         return {"status": "grace_needed", "days_left": 0}
     else:
         return {"status": "expired", "days_left": 0}
 
 
 def calculate_completion(total_tasks: int, completed_tasks: int, average_score: float) -> dict:
-    """
-    Course completion check karo.
-    Returns: grade, trophy, is_complete
-    """
     if total_tasks == 0:
         return {"is_complete": False, "grade": None, "trophy": None}
 
     completion_pct = (completed_tasks / total_tasks) * 100
 
-    # Minimum 80% tasks submit hone chahiye
     if completion_pct < 80:
         return {"is_complete": False, "grade": None, "trophy": None}
 
-    # Score ke hisaab se grade
     if average_score >= 80:
         return {"is_complete": True, "grade": "distinction", "trophy": "gold"}
     elif average_score >= 65:
@@ -86,10 +70,6 @@ def calculate_completion(total_tasks: int, completed_tasks: int, average_score: 
 
 
 async def check_and_update_expiry(student_id: str) -> dict:
-    """
-    Student ka expiry status check karo aur DB update karo agar zaroorat ho.
-    Returns expiry info for frontend.
-    """
     db = get_supabase_admin()
     try:
         profile = db.table("student_profiles").select(
@@ -107,7 +87,6 @@ async def check_and_update_expiry(student_id: str) -> dict:
 
         expiry = calculate_expiry_status(plan_ends_at, data.get("grace_period_ends_at"))
 
-        # Grace period set karni hai
         if expiry["status"] == "grace_needed":
             grace_ends = datetime.now(timezone.utc) + timedelta(days=GRACE_PERIOD_DAYS)
             db.table("student_profiles").update({
@@ -116,14 +95,12 @@ async def check_and_update_expiry(student_id: str) -> dict:
             expiry["status"] = "grace"
             expiry["grace_days_left"] = GRACE_PERIOD_DAYS
 
-        # Expired — status update karo
         if expiry["status"] == "expired":
             db.table("student_profiles").update({
                 "status": "expired"
             }).eq("user_id", student_id).execute()
             logger.info(f"Student {student_id} marked as expired")
 
-        # Next track info add karo
         current_track = data.get("current_track")
         next_track = get_next_track(current_track) if current_track else None
 
@@ -141,13 +118,8 @@ async def check_and_update_expiry(student_id: str) -> dict:
 
 
 async def check_course_completion(student_id: str, course_id: str) -> dict:
-    """
-    Course complete hua ya nahi check karo.
-    Agar complete — grade, trophy set karo.
-    """
     db = get_supabase_admin()
     try:
-        # Tasks count
         tasks = db.table("tasks").select(
             "id, status"
         ).eq("student_id", student_id).eq("course_id", course_id).execute()
@@ -158,7 +130,6 @@ async def check_course_completion(student_id: str, course_id: str) -> dict:
         total = len(tasks.data)
         completed = len([t for t in tasks.data if t["status"] == "graded"])
 
-        # Average score
         profile = db.table("student_profiles").select(
             "average_score"
         ).eq("user_id", student_id).single().execute()
@@ -168,7 +139,6 @@ async def check_course_completion(student_id: str, course_id: str) -> dict:
         result = calculate_completion(total, completed, avg_score)
 
         if result["is_complete"]:
-            # Course update
             db.table("courses").update({
                 "completed_at": datetime.now(timezone.utc).isoformat(),
                 "completion_grade": result["grade"],
