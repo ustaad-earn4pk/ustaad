@@ -72,13 +72,17 @@ export const supportAPI = {
   sendMessage: (data) => api.post('/support/send', data),
   getMessages: () => api.get('/support/messages'),
   getUnreadCount: () => api.get('/support/unread-count'),
-  // Admin
   getConversations: () => api.get('/support/admin/conversations'),
   getStudentMessages: (studentId) => api.get(`/support/admin/messages/${studentId}`),
   replyToStudent: (studentId, data) => api.post(`/support/admin/reply/${studentId}`, data),
   assignStudent: (data) => api.post('/support/admin/assign', data),
   unassignStudent: (data) => api.delete('/support/admin/unassign', { data }),
   getAdminsList: () => api.get('/support/admin/admins-list'),
+}
+export const reportingAPI = {
+  getProgressReport: () => api.get('/reporting/progress-report'),
+  issueCertificate: () => api.post('/reporting/issue-certificate'),
+  getMyCertificate: () => api.get('/reporting/my-certificate'),
 }
 export const adminAPI = {
   getDashboard: () => api.get('/admin/dashboard'),
