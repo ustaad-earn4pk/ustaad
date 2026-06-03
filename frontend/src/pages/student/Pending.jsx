@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../../store/authStore'
 import { paymentAPI } from '../../api'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import UstaadBot from '../../components/bot/UstaadBot'
 import LanguageSwitcher from '../../components/common/LanguageSwitcher'
 
@@ -15,10 +15,12 @@ const TRACK_INFO = {
 }
 
 export default function Pending() {
-  const { user, logout } = useAuthStore()
+  const { user, logout, setAuth } = useAuthStore()
   const location = useLocation()
+  const navigate = useNavigate()
   const selectedTrack = location.state?.selectedTrack
   const trackInfo = TRACK_INFO[selectedTrack] || null
+  const intervalRef = useRef(null)
 
   const [step, setStep] = useState('status')
   const [accountInfo, setAccountInfo] = useState(null)
@@ -29,6 +31,10 @@ export default function Pending() {
   useEffect(() => {
     loadInfo()
     checkStatus()
+
+    // Auto check every 30 seconds
+    intervalRef.current = setInterval(checkStatus, 30000)
+    return () => clearInterval(intervalRef.current)
   }, [])
 
   async function loadInfo() {
@@ -43,7 +49,12 @@ export default function Pending() {
       const res = await paymentAPI.getMyStatus()
       if (res.data?.length > 0) {
         const latest = res.data[0]
-        if (latest.status === 'pending' || latest.status === 'approved') {
+        if (latest.status === 'approved') {
+          // Payment approved — update user store aur dashboard pe bhejo
+          clearInterval(intervalRef.current)
+          setAuth({ ...user, status: 'approved', onboarding_status: 'completed' }, null)
+          navigate('/dashboard', { replace: true })
+        } else if (latest.status === 'pending') {
           setStep('submitted')
         }
       }
@@ -62,7 +73,6 @@ export default function Pending() {
     formData.append('transaction_id', form.transaction_id.trim())
     formData.append('sender_number', form.sender_number.trim())
     formData.append('screenshot_url', form.screenshot)
-    if (selectedTrack) formData.append('plan_id', selectedTrack)
 
     setSubmitting(true)
     try {
@@ -97,7 +107,12 @@ export default function Pending() {
             <div className="card text-center mb-4">
               <div className="text-4xl mb-3">⏳</div>
               <h2 className="font-semibold text-gray-900 mb-2">Payment Under Review</h2>
-              <p className="text-gray-500 text-sm">Admin 24 ghante mein verify karega.</p>
+              <p className="text-gray-500 text-sm">Admin verify karega. Approve hone pe automatically dashboard khul jayega.</p>
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <motion.div className="w-2 h-2 bg-brand-400 rounded-full"
+                  animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
+                <p className="text-xs text-gray-400">Checking status...</p>
+              </div>
             </div>
             <button onClick={logout} className="w-full text-sm text-gray-400 hover:text-gray-600 text-center">Logout</button>
           </motion.div>
@@ -106,8 +121,6 @@ export default function Pending() {
         {/* PAYMENT INSTRUCTIONS */}
         {step === 'status' && (
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-xs">
-
-            {/* Selected course info */}
             {trackInfo && (
               <div className="card bg-brand-50 border border-brand-100 mb-4">
                 <p className="text-xs text-brand-600 font-semibold uppercase mb-1">Selected Course</p>
@@ -124,15 +137,11 @@ export default function Pending() {
               <div className="bg-gray-50 rounded-2xl p-3 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">JazzCash Number</span>
-                  <span className="font-mono font-bold text-gray-900">
-                    {accountInfo?.jazzcash || '03XX-XXXXXXX'}
-                  </span>
+                  <span className="font-mono font-bold text-gray-900">{accountInfo?.jazzcash || '03XX-XXXXXXX'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Amount</span>
-                  <span className="font-bold text-green-600">
-                    PKR {trackInfo ? trackInfo.price.toLocaleString() : '999'}
-                  </span>
+                  <span className="font-bold text-green-600">PKR {trackInfo ? trackInfo.price.toLocaleString() : '999'}</span>
                 </div>
               </div>
             </div>
@@ -149,9 +158,7 @@ export default function Pending() {
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-xs">
             <div className="card mb-4">
               <p className="text-sm font-semibold text-gray-700 mb-4">Step 2 — Proof Upload Karo</p>
-
               {error && <div className="bg-red-50 text-red-600 text-sm rounded-xl p-3 mb-3">{error}</div>}
-
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Transaction ID</label>
@@ -179,7 +186,6 @@ export default function Pending() {
                 </div>
               </div>
             </div>
-
             <button onClick={handleSubmit} disabled={submitting}
               className="btn-primary w-full py-3 disabled:opacity-50">
               {submitting ? 'Submitting...' : 'Submit Payment Proof'}
