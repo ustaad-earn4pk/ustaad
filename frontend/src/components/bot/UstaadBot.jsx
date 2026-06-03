@@ -50,6 +50,13 @@ const EXPRESSIONS = {
     animation: 'none',
     label: '⌨️'
   },
+  cool: {
+    eyes: 'glasses',
+    mouth: 'slight-smile',
+    color: '#1D9E75',
+    animation: 'bob',
+    label: '😎'
+  },
 }
 
 const animations = {
@@ -157,6 +164,22 @@ export default function UstaadBot({ expression = 'welcoming', size = 80, showLab
               <ellipse cx="40" cy="62" rx="2" ry="2" fill="white" />
               <ellipse cx="62" cy="64" rx="5" ry="5" fill="#3D2B1F" />
               <ellipse cx="64" cy="62" rx="2" ry="2" fill="white" />
+            </>}
+            {expr.eyes === 'glasses' && <>
+              {/* Lens tint */}
+              <rect x="29" y="59" width="18" height="11" rx="3" fill="#1A1A1A" opacity="0.85" />
+              <rect x="53" y="59" width="18" height="11" rx="3" fill="#1A1A1A" opacity="0.85" />
+              {/* Glass frames */}
+              <rect x="28" y="58" width="20" height="13" rx="4" fill="none" stroke="#1A1A1A" strokeWidth="2.5" />
+              <rect x="52" y="58" width="20" height="13" rx="4" fill="none" stroke="#1A1A1A" strokeWidth="2.5" />
+              {/* Bridge */}
+              <path d="M48,64 L52,64" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" />
+              {/* Arms */}
+              <path d="M28,64 L22,62" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" />
+              <path d="M72,64 L78,62" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" />
+              {/* Lens shine */}
+              <path d="M31,61 L34,61" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+              <path d="M55,61 L58,61" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
             </>}
 
             {/* MOUTH */}
