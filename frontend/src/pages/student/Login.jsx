@@ -179,7 +179,7 @@ export default function Login() {
                 </Link>
               </p>
               <Link to="/forgot-password" className="text-sm text-brand-600 font-medium hover:underline">
-                Password bhool gaye?
+               {t('forgotPassword')}
               </Link>
             </div>
           </div>
