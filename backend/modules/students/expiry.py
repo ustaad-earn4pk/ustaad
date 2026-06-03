@@ -96,10 +96,22 @@ async def check_and_update_expiry(student_id: str) -> dict:
             expiry["grace_days_left"] = GRACE_PERIOD_DAYS
 
         if expiry["status"] == "expired":
-            db.table("student_profiles").update({
-                "status": "expired"
-            }).eq("user_id", student_id).execute()
-            logger.info(f"Student {student_id} marked as expired")
+            # ← RENEWAL CHECK — expired but renewal pending hai to access band nahi hoga
+            renewal_pending = db.table("payments").select("id").eq(
+                "student_id", student_id
+            ).eq("status", "pending").in_(
+                "payment_type", ["renewal_same", "renewal_next"]
+            ).execute()
+
+            if renewal_pending.data:
+                # Renewal pending hai — grace extend karo, expired mat karo
+                logger.info(f"[EXPIRY] student={student_id} expired but renewal pending — access maintained")
+                expiry["status"] = "renewal_pending"
+            else:
+                db.table("student_profiles").update({
+                    "status": "expired"
+                }).eq("user_id", student_id).execute()
+                logger.info(f"Student {student_id} marked as expired")
 
         current_track = data.get("current_track")
         next_track = get_next_track(current_track) if current_track else None
