@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 
 const translations = {
   en: {
+    forgotPassword: 'Forgot Password?',
     welcome: 'Welcome to USTAAD',
     tagline: 'Learn. Do. Earn.',
     login: 'Login',
@@ -45,6 +46,7 @@ const translations = {
     consistency: 'Consistency',
   },
   ur_nastaliq: {
+    forgotPassword: 'پاس ورڈ بھول گئے؟',
     welcome: 'USTAAD میں خوش آمدید',
     tagline: 'سیکھو۔ کرو۔ کماؤ۔',
     login: 'لاگ ان',
@@ -87,6 +89,7 @@ const translations = {
     consistency: 'تسلسل',
   },
   ur_roman: {
+    forgotPassword: 'Password bhool gaye?',
     welcome: 'USTAAD mein khush aamdeed',
     tagline: 'Seekho. Karo. Kamao.',
     login: 'Login karein',
