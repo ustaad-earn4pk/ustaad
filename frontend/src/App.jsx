@@ -27,6 +27,7 @@ function PublicRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore()
   if (isAuthenticated) {
     if (user?.role === 'admin') return <Navigate to="/admin" replace />
+    if (user?.onboarding_status !== 'completed') return <Navigate to="/onboarding" replace />
     if (user?.status === 'pending') return <Navigate to="/pending" replace />
     return <Navigate to="/dashboard" replace />
   }
