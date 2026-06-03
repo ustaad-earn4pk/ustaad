@@ -13,7 +13,6 @@ SUPABASE_ANON_KEY = "sb_publishable_4Swh9me3ZBRvz6fzwV-dWQ_TnDN12dX"
 
 
 def check_bot(website: Optional[str], form_load_time: Optional[float]):
-    """Honeypot + time check. Raises HTTPException if bot detected."""
     if website:
         logger.warning(f"Bot detected via honeypot — website field: {website}")
         raise HTTPException(status_code=400, detail="Invalid request.")
@@ -93,7 +92,7 @@ async def login(data) -> dict:
         user_data = user_result.data[0]
         user_id = user_data["id"]
         student_status = "active"
-        onboarding_status = "not_started"
+        onboarding_status = "completed"  # ← admin/super_admin ke liye default completed
 
         if user_data["role"] == "student":
             profile = db.table("student_profiles").select("status, onboarding_status").eq("user_id", user_id).execute()
@@ -145,11 +144,9 @@ async def forgot_password(data) -> dict:
                 },
                 json={"email": data.email}
             )
-        # Always success — email exist kare ya na kare
         return {"message": "If this email exists, a reset link has been sent."}
     except Exception as e:
         logger.error(f"Forgot password error: {e}")
-        # Error leak mat karo
         return {"message": "If this email exists, a reset link has been sent."}
 
 
