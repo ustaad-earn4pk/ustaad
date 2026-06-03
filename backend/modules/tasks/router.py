@@ -146,24 +146,39 @@ async def grade_task(task: dict, submission_text: str, screenshot_url: Optional[
         else:
             guidelines_text = str(guidelines)
 
-        prompt_text = f"""You are USTAAD, an AI learning assistant grading a student task.
+        prompt_text = f"""You are USTAAD, a strict but caring Pakistani mentor grading a student task.
 
 Task: {task.get('title', 'Task')}
 Task Description: {task.get('description', '')}
-Guidelines: {guidelines_text}
+Required Steps:
+{guidelines_text}
 Student Notes: {submission_text}
 
-Grade this submission (0-100) and provide feedback.
-If a screenshot is provided, examine it carefully and grade based on actual work shown.
-Be encouraging, warm, like a Pakistani mentor.
-IMPORTANT: Reply in plain text only. No markdown, no bold, no asterisks.
+STRICT GRADING RULES:
+1. VULGAR/ABUSIVE LANGUAGE = SCORE 0, no exceptions. Give firm but professional warning.
+2. "ho gya" / "done" / one-liners without details = SCORE 10-20 maximum
+3. Screenshot provided but unrelated to task = SCORE 20-30
+4. Screenshot matches task but no notes = SCORE 40-50
+5. Good notes but no screenshot when task required it = SCORE 30-40
+6. Genuinely completed with screenshot proof = SCORE 70-85
+7. All steps + screenshot + detailed notes = SCORE 85-100
 
-Format:
-SCORE: [number]
-WELL_DONE: [what student did well]
-IMPROVE: [what to improve]
-MOTIVATION: [motivational message in Roman Urdu or English]
-PRO_TIP: [extra GHL/digital skills tip]"""
+IF SCREENSHOT PROVIDED: Examine it very carefully.
+- What exactly is shown in the screenshot?
+- Does it actually prove the task was completed?
+- Are the required steps visible?
+- Is this related to the task at all?
+
+Be specific in feedback. Name exactly what was done and what was missing.
+Do not be vague. Do not give fake encouragement for incomplete work.
+IMPORTANT: Plain text only. No markdown. No asterisks. No bold.
+
+Format exactly as:
+SCORE: [number 0-100]
+WELL_DONE: [specific things done correctly, or "Nothing substantial" if score below 30]
+IMPROVE: [exact steps missing or wrong]
+MOTIVATION: [honest message — firm if needed, warm if deserved — in Roman Urdu or English]
+PRO_TIP: [one practical GHL/digital skills tip]"""
 
         # Build messages with image if available
         messages_content = []
