@@ -42,7 +42,6 @@ async def submit_payment(
 ):
     db = get_supabase_admin()
 
-    # Upload screenshot to Supabase Storage
     file_bytes = await screenshot_url.read()
     ext = screenshot_url.filename.rsplit(".", 1)[-1].lower() if "." in screenshot_url.filename else "jpg"
     file_path = f"{user['sub']}/{uuid.uuid4()}.{ext}"
@@ -60,7 +59,7 @@ async def submit_payment(
 
     result = db.table("payments").insert({
         "student_id": user["sub"],
-        "plan_id": plan_id if plan_id else None,
+        "plan_id": None,
         "amount_pkr": amount_pkr,
         "payment_method": "manual",
         "gateway": "jazzcash",
@@ -115,7 +114,7 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
             "status": "approved",
             "approved_at": "now()",
             "approved_by": user["sub"],
-            "current_plan": payment.data.get("plan_id") or "normal",
+            "current_plan": "normal",
             "payment_id": payment_id
         }).eq("user_id", payment.data["student_id"]).execute()
 
