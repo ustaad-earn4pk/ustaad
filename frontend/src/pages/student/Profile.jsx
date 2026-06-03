@@ -80,7 +80,6 @@ export default function Profile() {
       setSuccess(true)
       setBotExpr('celebrating')
 
-      // Language update karo store mein bhi
       if (form.preferred_language !== user?.preferred_language) {
         setLanguage(form.preferred_language)
         setAuth({ ...user, preferred_language: form.preferred_language }, null)
@@ -95,6 +94,8 @@ export default function Profile() {
       setSaving(false)
     }
   }
+
+  const gender = profile?.gender || 'male'
 
   if (loading) {
     return (
@@ -128,7 +129,7 @@ export default function Profile() {
 
         {/* Bot + Name */}
         <motion.div {...fadeUp} className="flex flex-col items-center py-4">
-          <UstaadBot expression={botExpr} size={80} />
+          <UstaadBot expression={botExpr} size={80} gender={gender} />
           <h2 className="text-xl font-bold text-gray-900 mt-3">{profile?.full_name}</h2>
           <p className="text-sm text-brand-600">{profile?.email}</p>
           <div className="flex items-center gap-2 mt-2">
