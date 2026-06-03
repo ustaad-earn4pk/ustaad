@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigate, useParams, Routes, Route } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { taskAPI } from '../../api'
 import UstaadBot from '../../components/bot/UstaadBot'
 import api from '../../api'
@@ -17,7 +17,6 @@ function cleanFeedback(text) {
   return (text || '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/#{1,6}\s/g, '').replace(/---/g, '')
 }
 
-// ── Task List ─────────────────────────────────────────────
 function TaskList() {
   const navigate = useNavigate()
   const [tasks, setTasks] = useState([])
@@ -25,9 +24,7 @@ function TaskList() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
 
-  useEffect(() => {
-    loadTasks()
-  }, [])
+  useEffect(() => { loadTasks() }, [])
 
   async function loadTasks() {
     try {
@@ -65,8 +62,6 @@ function TaskList() {
       </div>
 
       <div className="px-5 pt-4 space-y-3">
-
-        {/* Today's Task — highlight */}
         {todayTask && todayTask.status === 'assigned' && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             onClick={() => navigate(`/tasks/${todayTask.id}`)}
@@ -88,9 +83,7 @@ function TaskList() {
         )}
 
         {loading ? (
-          <div className="flex justify-center pt-20">
-            <UstaadBot expression="thinking" size={60} />
-          </div>
+          <div className="flex justify-center pt-20"><UstaadBot expression="thinking" size={60} /></div>
         ) : filtered.length === 0 ? (
           <div className="card text-center py-12">
             <p className="text-4xl mb-3">📋</p>
@@ -126,7 +119,6 @@ function TaskList() {
         )}
       </div>
 
-      {/* Bottom Nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3">
         <div className="flex items-center justify-around">
           {[
@@ -147,7 +139,6 @@ function TaskList() {
   )
 }
 
-// ── Task Detail ───────────────────────────────────────────
 function TaskDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -160,17 +151,13 @@ function TaskDetail() {
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState(null)
 
-  useEffect(() => {
-    loadTask()
-  }, [id])
+  useEffect(() => { loadTask() }, [id])
 
   async function loadTask() {
     try {
       const res = await taskAPI.getTask(id)
       setTask(res.data)
-      if (res.data?.ai_feedback_en) {
-        setFeedback(res.data.ai_feedback_en)
-      }
+      if (res.data?.ai_feedback_en) setFeedback(res.data.ai_feedback_en)
     } catch (err) {
       console.error(err)
     } finally {
@@ -179,7 +166,8 @@ function TaskDetail() {
   }
 
   async function handleSubmitText() {
-    if (!textAnswer.trim()) return setError('Jawab likhna zaroori hai')
+    if (!textAnswer.trim()) return setError('Jawab likhna zaroori hai.')
+    if (textAnswer.trim().length < 50) return setError(`Jawab bohat chota hai (${textAnswer.trim().length}/50 characters). Thoda detail mein likho — kya kiya, kya seekha.`)
     setSubmitting(true)
     setError('')
     try {
@@ -194,7 +182,8 @@ function TaskDetail() {
   }
 
   async function handleSubmitScreenshot() {
-    if (!screenshot) return setError('Screenshot select karo')
+    if (!screenshot) return setError('Screenshot upload karna zaroori hai — task mein screenshot submit karna tha.')
+    if (textAnswer.trim().length < 20) return setError('Notes mein kuch likho (kam az kam 20 characters) — kya kiya, kya dekha.')
     setSubmitting(true)
     setError('')
     try {
@@ -228,10 +217,11 @@ function TaskDetail() {
 
   const isSubmitted = ['submitted', 'graded'].includes(task.status)
   const guidelines = task.guidelines_en || []
+  const charCount = textAnswer.trim().length
+  const minChars = submitType === 'text' ? 50 : 20
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
-      {/* Header */}
       <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-4 safe-top">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/tasks')}
@@ -251,7 +241,6 @@ function TaskDetail() {
 
       <div className="px-5 pt-5 space-y-4">
 
-        {/* Task Description */}
         <div className="card">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Aaj ka Kaam</p>
           <p className="text-sm text-gray-700 leading-relaxed">
@@ -261,7 +250,6 @@ function TaskDetail() {
           </p>
         </div>
 
-        {/* Guidelines */}
         {guidelines.length > 0 && (
           <div className="card">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Steps</p>
@@ -276,7 +264,6 @@ function TaskDetail() {
           </div>
         )}
 
-        {/* Feedback — if graded */}
         {(feedback || task.ai_feedback_en) && (
           <div className="card bg-brand-50 border border-brand-100">
             <div className="flex items-center gap-2 mb-3">
@@ -289,18 +276,18 @@ function TaskDetail() {
             {task.ai_score && (
               <div className="mt-3 pt-3 border-t border-brand-100 flex items-center justify-between">
                 <span className="text-sm text-gray-600">Score</span>
-                <span className="text-xl font-bold text-brand-600">{task.ai_score}/100</span>
+                <span className={`text-xl font-bold ${task.ai_score >= 70 ? 'text-brand-600' : task.ai_score >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+                  {task.ai_score}/100
+                </span>
               </div>
             )}
           </div>
         )}
 
-        {/* Submit section */}
         {!isSubmitted && (
           <div className="card space-y-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Submit Karo</p>
 
-            {/* Submit type toggle */}
             <div className="flex gap-2">
               <button onClick={() => setSubmitType('text')}
                 className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${submitType === 'text' ? 'bg-brand-400 text-white' : 'bg-gray-100 text-gray-500'}`}>
@@ -313,9 +300,14 @@ function TaskDetail() {
             </div>
 
             {submitType === 'text' && (
-              <textarea value={textAnswer} onChange={e => setTextAnswer(e.target.value)}
-                placeholder="Aaj ka task describe karo — kya kiya, kya seekha, koi challenge tha?" rows={5}
-                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm outline-none resize-none focus:border-brand-400" />
+              <div>
+                <textarea value={textAnswer} onChange={e => setTextAnswer(e.target.value)}
+                  placeholder="Aaj ka task describe karo — kya kiya, kya seekha, koi challenge tha? (kam az kam 50 characters)" rows={5}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm outline-none resize-none focus:border-brand-400" />
+                <p className={`text-xs mt-1 text-right ${charCount >= 50 ? 'text-green-500' : 'text-gray-400'}`}>
+                  {charCount}/50 minimum
+                </p>
+              </div>
             )}
 
             {submitType === 'screenshot' && (
@@ -323,17 +315,26 @@ function TaskDetail() {
                 <label className="block w-full border-2 border-dashed border-gray-200 rounded-2xl p-4 text-center cursor-pointer hover:border-brand-300 transition">
                   {screenshot
                     ? <span className="text-green-600 text-sm">✓ {screenshot.name}</span>
-                    : <span className="text-gray-400 text-sm">📸 Screenshot select karo</span>}
+                    : <span className="text-gray-400 text-sm">📸 Screenshot select karo (required)</span>}
                   <input type="file" accept="image/*" className="hidden"
                     onChange={e => setScreenshot(e.target.files[0] || null)} />
                 </label>
-                <textarea value={textAnswer} onChange={e => setTextAnswer(e.target.value)}
-                  placeholder="Optional: kuch notes likhna chahein toh..." rows={2}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm outline-none resize-none focus:border-brand-400" />
+                <div>
+                  <textarea value={textAnswer} onChange={e => setTextAnswer(e.target.value)}
+                    placeholder="Kya kiya batao — screenshot mein kya dikh raha hai (kam az kam 20 characters)" rows={3}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm outline-none resize-none focus:border-brand-400" />
+                  <p className={`text-xs mt-1 text-right ${charCount >= 20 ? 'text-green-500' : 'text-gray-400'}`}>
+                    {charCount}/20 minimum
+                  </p>
+                </div>
               </div>
             )}
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && (
+              <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
 
             <button
               onClick={submitType === 'text' ? handleSubmitText : handleSubmitScreenshot}
@@ -343,14 +344,13 @@ function TaskDetail() {
                 <span className="flex items-center justify-center gap-2">
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
                     className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  Submitting...
+                  Grading ho rahi hai...
                 </span>
               ) : '✅ Submit Karein'}
             </button>
           </div>
         )}
 
-        {/* Already submitted */}
         {task.status === 'submitted' && !feedback && (
           <div className="card bg-amber-50 border border-amber-100 text-center py-6">
             <p className="text-3xl mb-2">⏳</p>
@@ -359,7 +359,6 @@ function TaskDetail() {
           </div>
         )}
 
-        {/* Completed */}
         {task.status === 'graded' && (
           <button onClick={() => navigate('/tasks')} className="btn-primary w-full py-3">
             ← Tasks List pe Wapas Jao
