@@ -140,6 +140,7 @@ async def update_my_profile(data: ProfileUpdateRequest, user=Depends(get_current
 
 
 from modules.students.expiry import check_and_update_expiry, check_course_completion
+from modules.tasks.streak_service import check_streak_warning  # ← STREAK IMPORT
 
 
 # STUDENT — expiry status check
@@ -152,3 +153,9 @@ async def get_expiry_status(user=Depends(get_current_user)):
 @router.post("/check-completion/{course_id}")
 async def trigger_completion_check(course_id: str, user=Depends(get_current_user)):
     return await check_course_completion(user["sub"], course_id)
+
+
+# STUDENT — streak warning check (called on dashboard load)  ← NEW
+@router.get("/streak-warning")
+async def get_streak_warning(user=Depends(get_current_user)):
+    return await check_streak_warning(user["sub"])
