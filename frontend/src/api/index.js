@@ -33,7 +33,7 @@ export const studentAPI = {
   getProfile: () => api.get('/students/me'),
   updateProfile: (data) => api.put('/students/me/profile', data),
   getExpiryStatus: () => api.get('/students/expiry-status'),
-  getStreakWarning: () => api.get('/students/streak-warning'),  // ← NEW
+  getStreakWarning: () => api.get('/students/streak-warning'),
 }
 export const onboardingAPI = {
   start: () => api.post('/onboarding/start'),
@@ -48,9 +48,9 @@ export const chatAPI = {
 export const taskAPI = {
   getMyTasks: () => api.get('/tasks/my'),
   getTask: (id) => api.get(`/tasks/${id}`),
-  getTodayTask: () => api.get('/tasks/today'),                                          // ← NEW
-  submitText: (taskId, data) => api.post(`/tasks/${taskId}/submit-text`, data),         // ← NEW
-  submitScreenshot: (taskId, formData) => api.post(`/tasks/${taskId}/submit-screenshot`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }), // ← NEW
+  getTodayTask: () => api.get('/tasks/today'),
+  submitText: (taskId, data) => api.post(`/tasks/${taskId}/submit-text`, data),
+  submitScreenshot: (taskId, formData) => api.post(`/tasks/${taskId}/submit-screenshot`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
 export const paymentAPI = {
   getPlans: () => api.get('/payments/plans'),
@@ -58,6 +58,9 @@ export const paymentAPI = {
   submit: (data) => api.post('/payments/submit', data),
   submitWithFile: (formData) => api.post('/payments/submit', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getMyStatus: () => api.get('/payments/my-payments'),
+  getRenewalOptions: () => api.get('/payments/renewal-options'),                                                                        // ← NEW
+  submitRenewal: (formData) => api.post('/payments/submit-renewal', formData, { headers: { 'Content-Type': 'multipart/form-data' } }), // ← NEW
+  getMyRenewalStatus: () => api.get('/payments/my-renewal-status'),                                                                    // ← NEW
 }
 export const courseAPI = {
   getMyCourses: () => api.get('/courses/my'),
