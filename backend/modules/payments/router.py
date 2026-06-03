@@ -3,6 +3,7 @@ from typing import Optional
 from core.security import get_current_user
 from core.database import get_supabase_admin
 from core.config import settings
+from modules.notifications.router import create_notification  # ← ADD THIS
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import logging
@@ -67,6 +68,27 @@ def get_next_track(current_track: str):
         return None
 
 
+# ── Helper: notify all admins + super_admin ───────────────────────────────────
+
+async def notify_admins(db, type: str, title: str, body: str):
+    """Notify all admins and super_admin — used for payment events"""
+    try:
+        admins = db.table("users").select("id").in_(
+            "role", ["admin", "super_admin"]
+        ).execute()
+
+        for admin in (admins.data or []):
+            await create_notification(
+                db=db,
+                user_id=admin["id"],
+                type=type,
+                title=title,
+                body=body
+            )
+    except Exception as e:
+        logger.error(f"[NOTIFY_ADMINS] Failed: {e}")
+
+
 @router.get("/plans")
 async def get_plans():
     db = get_supabase_admin()
@@ -124,6 +146,14 @@ async def submit_payment(
         "payment_type": "new_enrollment"
     }).execute()
 
+    # ── NOTIFY admins: new enrollment payment submitted ──
+    await notify_admins(
+        db=db,
+        type="payment_submitted",
+        title="💰 New Payment Submitted",
+        body=f"Student ne new enrollment payment submit ki — PKR {amount_pkr:,} — TxID: {transaction_id}"
+    )
+
     return {"message": "Payment submitted. Admin will verify shortly.", "payment_id": result.data[0]["id"]}
 
 
@@ -138,11 +168,6 @@ async def get_my_payments(user=Depends(get_current_user)):
 
 @router.get("/renewal-options")
 async def get_renewal_options(user=Depends(get_current_user)):
-    """
-    Student ka current status dekh ke renewal options return kare.
-    - renewal_same: same course extend (agar incomplete hai)
-    - renewal_next: next course unlock (agar complete ya last warning)
-    """
     db = get_supabase_admin()
     try:
         profile = db.table("student_profiles").select(
@@ -156,7 +181,6 @@ async def get_renewal_options(user=Depends(get_current_user)):
         current_track = data.get("current_track")
         next_track = get_next_track(current_track)
 
-        # Pending renewal check — duplicate submit block
         pending = db.table("payments").select("id").eq(
             "student_id", user["sub"]
         ).eq("status", "pending").eq("payment_type", "renewal_same").execute()
@@ -171,7 +195,6 @@ async def get_renewal_options(user=Depends(get_current_user)):
 
         options = []
 
-        # Same course extend option
         if completion_pct < 80:
             options.append({
                 "type": "renewal_same",
@@ -184,7 +207,6 @@ async def get_renewal_options(user=Depends(get_current_user)):
                 "pending": len(pending.data) > 0
             })
 
-        # Next course option
         if next_track:
             options.append({
                 "type": "renewal_next",
@@ -213,7 +235,7 @@ async def get_renewal_options(user=Depends(get_current_user)):
 
 @router.post("/submit-renewal")
 async def submit_renewal(
-    renewal_type: str = Form(...),  # renewal_same or renewal_next
+    renewal_type: str = Form(...),
     transaction_id: str = Form(...),
     sender_number: str = Form(...),
     screenshot: UploadFile = File(...),
@@ -221,11 +243,9 @@ async def submit_renewal(
 ):
     db = get_supabase_admin()
 
-    # Validate renewal type
     if renewal_type not in ["renewal_same", "renewal_next"]:
         raise HTTPException(status_code=400, detail="Invalid renewal type")
 
-    # Duplicate pending check
     existing = db.table("payments").select("id").eq(
         "student_id", user["sub"]
     ).eq("status", "pending").eq("payment_type", renewal_type).execute()
@@ -233,7 +253,6 @@ async def submit_renewal(
     if existing.data:
         raise HTTPException(status_code=400, detail="Renewal already pending. Admin verify kar raha hai.")
 
-    # Get profile for track + amount
     profile = db.table("student_profiles").select(
         "current_track"
     ).eq("user_id", user["sub"]).single().execute()
@@ -252,7 +271,6 @@ async def submit_renewal(
 
     amount = TRACK_PRICES.get(target_track, 5000)
 
-    # Upload screenshot
     file_bytes = await screenshot.read()
     ext = screenshot.filename.rsplit(".", 1)[-1].lower() if "." in screenshot.filename else "jpg"
     file_path = f"{user['sub']}/renewal/{uuid.uuid4()}.{ext}"
@@ -279,6 +297,15 @@ async def submit_renewal(
         "payment_type": renewal_type,
         "notes": f"Target track: {target_track}"
     }).execute()
+
+    # ── NOTIFY admins: renewal payment submitted ──
+    renewal_label = "Same Course Extend" if renewal_type == "renewal_same" else "Next Course Unlock"
+    await notify_admins(
+        db=db,
+        type="payment_submitted",
+        title="🔄 Renewal Payment Submitted",
+        body=f"{renewal_label} — PKR {amount:,} — Track: {TRACK_NAMES.get(target_track, target_track)} — TxID: {transaction_id}"
+    )
 
     return {
         "message": "Renewal submitted. Admin verify karega.",
@@ -342,14 +369,15 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
         "verified_by": user["sub"]
     }).eq("id", payment_id).execute()
 
+    student_id = payment.data["student_id"]
+    payment_type = payment.data.get("payment_type", "new_enrollment")
+
     if body.action == "approve":
-        payment_type = payment.data.get("payment_type", "new_enrollment")
 
         if payment_type == "new_enrollment":
-            # Original flow — unchanged
             student_profile = db.table("student_profiles").select(
                 "current_track"
-            ).eq("user_id", payment.data["student_id"]).single().execute()
+            ).eq("user_id", student_id).single().execute()
 
             current_track = student_profile.data.get("current_track", "ghl_developer") if student_profile.data else "ghl_developer"
             duration = TRACK_DURATIONS.get(current_track, 30)
@@ -364,11 +392,11 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
                 "plan_started_at": plan_started.isoformat(),
                 "plan_ends_at": plan_ends.isoformat(),
                 "payment_id": payment_id
-            }).eq("user_id", payment.data["student_id"]).execute()
+            }).eq("user_id", student_id).execute()
 
             try:
                 db.table("courses").insert({
-                    "student_id": payment.data["student_id"],
+                    "student_id": student_id,
                     "track": current_track,
                     "level": TRACK_LEVELS.get(current_track, 1),
                     "title": TRACK_NAMES.get(current_track, "USTAAD Course"),
@@ -378,16 +406,23 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
             except Exception as e:
                 logger.error(f"Course creation failed: {e}")
 
+            # ── NOTIFY student: enrollment approved ──
+            await create_notification(
+                db=db,
+                user_id=student_id,
+                type="payment_approved",
+                title="✅ Payment Approved!",
+                body=f"Tumhari payment approve ho gayi. {TRACK_NAMES.get(current_track)} course shuru ho gaya — {duration} din."
+            )
+
         elif payment_type == "renewal_same":
-            # Same course extend
             student_profile = db.table("student_profiles").select(
                 "current_track, plan_ends_at"
-            ).eq("user_id", payment.data["student_id"]).single().execute()
+            ).eq("user_id", student_id).single().execute()
 
             current_track = student_profile.data.get("current_track")
             duration = TRACK_DURATIONS.get(current_track, 30)
 
-            # Extend from today or from current end date (whichever is later)
             now = datetime.utcnow()
             current_end = student_profile.data.get("plan_ends_at")
             if current_end:
@@ -406,15 +441,23 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
                 "plan_ends_at": new_end.isoformat(),
                 "grace_period_ends_at": None,
                 "payment_id": payment_id
-            }).eq("user_id", payment.data["student_id"]).execute()
+            }).eq("user_id", student_id).execute()
 
-            logger.info(f"[RENEWAL_SAME] student={payment.data['student_id']} extended to {new_end}")
+            logger.info(f"[RENEWAL_SAME] student={student_id} extended to {new_end}")
+
+            # ── NOTIFY student: renewal approved ──
+            await create_notification(
+                db=db,
+                user_id=student_id,
+                type="payment_approved",
+                title="✅ Renewal Approved!",
+                body=f"{TRACK_NAMES.get(current_track)} course {duration} din aur extend ho gaya. Naya end date: {new_end.strftime('%d %b %Y')}."
+            )
 
         elif payment_type == "renewal_next":
-            # Next course unlock
             student_profile = db.table("student_profiles").select(
                 "current_track"
-            ).eq("user_id", payment.data["student_id"]).single().execute()
+            ).eq("user_id", student_id).single().execute()
 
             current_track = student_profile.data.get("current_track")
             next_track = get_next_track(current_track)
@@ -427,12 +470,10 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
             now = datetime.utcnow()
             new_end = now + timedelta(days=duration)
 
-            # Deactivate current course
             db.table("courses").update({
                 "is_active": False
-            }).eq("student_id", payment.data["student_id"]).eq("is_active", True).execute()
+            }).eq("student_id", student_id).eq("is_active", True).execute()
 
-            # Update profile to next track
             db.table("student_profiles").update({
                 "status": "approved",
                 "current_track": next_track,
@@ -443,12 +484,11 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
                 "payment_id": payment_id,
                 "total_tasks_assigned": 0,
                 "total_tasks_completed": 0,
-            }).eq("user_id", payment.data["student_id"]).execute()
+            }).eq("user_id", student_id).execute()
 
-            # Create new course record
             try:
                 db.table("courses").insert({
-                    "student_id": payment.data["student_id"],
+                    "student_id": student_id,
                     "track": next_track,
                     "level": TRACK_LEVELS.get(next_track, 1),
                     "title": TRACK_NAMES.get(next_track, "USTAAD Course"),
@@ -458,6 +498,25 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
             except Exception as e:
                 logger.error(f"[RENEWAL_NEXT] Course creation failed: {e}")
 
-            logger.info(f"[RENEWAL_NEXT] student={payment.data['student_id']} moved to {next_track}")
+            logger.info(f"[RENEWAL_NEXT] student={student_id} moved to {next_track}")
+
+            # ── NOTIFY student: next course unlocked ──
+            await create_notification(
+                db=db,
+                user_id=student_id,
+                type="payment_approved",
+                title="🎉 Next Course Unlock Ho Gaya!",
+                body=f"Mubarak ho! {TRACK_NAMES.get(next_track)} course shuru ho gaya — {duration} din."
+            )
+
+    else:
+        # Rejected — notify student
+        await create_notification(
+            db=db,
+            user_id=student_id,
+            type="payment_rejected",
+            title="❌ Payment Reject Ho Gayi",
+            body=f"Tumhari payment reject ho gayi. Reason: {body.admin_note or 'Admin se rabta karo'}."
+        )
 
     return {"message": f"Payment {new_status}", "payment_id": payment_id}
