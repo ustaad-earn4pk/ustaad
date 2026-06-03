@@ -65,10 +65,12 @@ async def submit_form(data: OnboardingFormData, user=Depends(get_current_user)):
     # Assess student level — hardcoded, no Claude
     assessment = assess_student_level(data.dict())
 
-    # Save form data + assessment to student_profiles
+    # Save to student_profiles
     try:
         db.table("student_profiles").update({
             "onboarding_status": "completed",
+            "skill_level": assessment["recommended_level"],
+            "current_track": assessment["recommended_track"],
             "skill_profile": {
                 "form_data": data.dict(),
                 "assessment": assessment
