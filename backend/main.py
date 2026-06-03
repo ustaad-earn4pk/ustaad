@@ -43,7 +43,8 @@ from modules.chat.router import router as chat_router
 from modules.admin.router import router as admin_router
 from modules.payments.router import router as payments_router
 from modules.tasks.router import router as tasks_router
-from modules.support.router import router as support_router  # ← NEW
+from modules.support.router import router as support_router
+from modules.reporting.router import router as reporting_router
 
 PREFIX = "/api/v1"
 app.include_router(auth_router, prefix=PREFIX)
@@ -53,7 +54,8 @@ app.include_router(chat_router, prefix=PREFIX)
 app.include_router(admin_router, prefix=PREFIX)
 app.include_router(payments_router, prefix=PREFIX)
 app.include_router(tasks_router, prefix=PREFIX)
-app.include_router(support_router, prefix=PREFIX)  # ← NEW
+app.include_router(support_router, prefix=PREFIX)
+app.include_router(reporting_router, prefix=PREFIX)
 
 @app.get("/")
 async def root():
