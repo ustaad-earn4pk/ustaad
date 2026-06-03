@@ -30,12 +30,19 @@ const TRACK_LEVELS = {
 
 const LAST_LEVEL = 5
 
-// Expiry banner config
 const EXPIRY_BANNERS = {
   warning_7: { bg: 'bg-yellow-50 border-yellow-200', text: 'text-yellow-800', sub: 'text-yellow-600', icon: '⚠️', label: 'دن باقی ہیں' },
   warning_3: { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', sub: 'text-orange-600', icon: '🔔', label: 'دن باقی ہیں' },
   warning_1: { bg: 'bg-red-50 border-red-200', text: 'text-red-800', sub: 'text-red-600', icon: '🚨', label: 'آخری دن!' },
   grace:     { bg: 'bg-red-50 border-red-300', text: 'text-red-900', sub: 'text-red-700', icon: '⛔', label: 'Grace Period' },
+}
+
+// Badge config
+const BADGE_CONFIG = {
+  streak_3:  { emoji: '🔥', label: '3 Day Streak' },
+  streak_7:  { emoji: '⚡', label: '7 Day Streak' },
+  streak_14: { emoji: '💪', label: '14 Day Streak' },
+  streak_30: { emoji: '🏆', label: '30 Day Streak' },
 }
 
 export default function Dashboard() {
@@ -46,6 +53,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(null)
   const [payment, setPayment] = useState(null)
   const [expiry, setExpiry] = useState(null)
+  const [streakWarning, setStreakWarning] = useState(null)  // ← NEW
   const [loading, setLoading] = useState(true)
 
   const name = user?.full_name?.split(' ')[0] || 'Student'
@@ -56,14 +64,16 @@ export default function Dashboard() {
 
   async function loadData() {
     try {
-      const [profileRes, paymentRes, expiryRes] = await Promise.all([
+      const [profileRes, paymentRes, expiryRes, streakRes] = await Promise.all([
         studentAPI.getProfile(),
         paymentAPI.getMyStatus(),
         studentAPI.getExpiryStatus(),
+        studentAPI.getStreakWarning(),  // ← NEW
       ])
       setProfile(profileRes.data)
       if (paymentRes.data?.length > 0) setPayment(paymentRes.data[0])
       setExpiry(expiryRes.data)
+      setStreakWarning(streakRes.data)  // ← NEW
     } catch (err) {
       console.error(err)
     } finally {
@@ -80,6 +90,10 @@ export default function Dashboard() {
   const nextTrack = expiry?.next_track
   const nextTrackName = TRACK_NAMES[nextTrack] || nextTrack
   const bannerConfig = expiry ? EXPIRY_BANNERS[expiry.expiry_status] : null
+
+  // Latest earned badge
+  const badges = profile?.streak_badges || []
+  const latestBadge = badges.length > 0 ? badges[badges.length - 1] : null
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -104,6 +118,32 @@ export default function Dashboard() {
 
       <motion.div variants={stagger} initial="initial" animate="animate" className="px-5 pt-5 space-y-4">
 
+        {/* Streak Warning Banner */}
+        {streakWarning?.warning && (
+          <motion.div variants={fadeUp}>
+            <div className={`card border ${streakWarning.freeze_available ? 'bg-orange-50 border-orange-200' : 'bg-red-50 border-red-300'}`}>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{streakWarning.freeze_available ? '🔥' : '🚨'}</span>
+                <div>
+                  <p className={`font-semibold text-sm ${streakWarning.freeze_available ? 'text-orange-800' : 'text-red-800'}`}>
+                    {streakWarning.message}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${streakWarning.freeze_available ? 'text-orange-600' : 'text-red-600'}`}>
+                    {streakWarning.freeze_available
+                      ? 'Ek din ki chhoot milti hai — aaj hi submit karo!'
+                      : 'Aakhri mauka — aaj submit nahi kiya tu streak 0 ho jayega!'}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => navigate('/tasks')}
+                className={`mt-3 w-full py-2 px-4 text-white text-sm font-semibold rounded-xl
+                  ${streakWarning.freeze_available ? 'bg-orange-500' : 'bg-red-500'}`}>
+                📋 Aaj ka Task Submit Karo
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Expiry Warning Banner */}
         {bannerConfig && isApproved && (
           <motion.div variants={fadeUp}>
@@ -125,13 +165,10 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-
-              {/* Next module button — sirf agar last level nahi */}
               {!isLastLevel && nextTrack && (
                 <button
                   onClick={() => navigate('/pending', { state: { selectedTrack: nextTrack, isRenewal: true } })}
-                  className="mt-3 w-full py-2 px-4 bg-brand-400 text-white text-sm font-semibold rounded-xl"
-                >
+                  className="mt-3 w-full py-2 px-4 bg-brand-400 text-white text-sm font-semibold rounded-xl">
                   🚀 Start Next Module: {nextTrackName}
                 </button>
               )}
@@ -214,14 +251,14 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* Streak + Stats */}
+        {/* Streak + Level + Latest Badge */}
         <motion.div variants={fadeUp} className="card">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-2xl">🔥</span>
               <div>
                 <p className="text-xs text-gray-500">{t('streak')}</p>
-                <p className="text-lg font-bold text-gray-900">{profile?.current_streak_days || 0} days</p>
+                <p className="text-lg font-bold text-gray-900">{profile?.current_streak || 0} days</p>
               </div>
             </div>
             <div className="text-right">
@@ -229,6 +266,17 @@ export default function Dashboard() {
               <p className="text-lg font-bold text-brand-600">Level {profile?.skill_level || 1}</p>
             </div>
           </div>
+
+          {/* Latest badge — sirf agar earned hai */}
+          {latestBadge && (
+            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-2">
+              <span className="text-xl">{latestBadge.emoji}</span>
+              <div>
+                <p className="text-xs font-semibold text-gray-700">{latestBadge.label}</p>
+                <p className="text-xs text-gray-400">Earned {latestBadge.earned_at}</p>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Bot greeting */}
