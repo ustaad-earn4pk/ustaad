@@ -4,13 +4,11 @@ from contextlib import asynccontextmanager
 from core.database import init_db
 from core.config import settings
 import logging
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger(__name__)
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 USTAAD Backend Starting...")
@@ -20,14 +18,12 @@ async def lifespan(app: FastAPI):
     logger.info("✅ Ready!")
     yield
     logger.info("👋 USTAAD Backend Shutting Down")
-
 app = FastAPI(
     title="USTAAD API",
     description="AI-powered professional skills learning platform — ustaad.earn4pk.com",
     version="1.0.0",
     lifespan=lifespan
 )
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -40,7 +36,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 from modules.auth.router import router as auth_router
 from modules.students.router import router as students_router
 from modules.onboarding.router import router as onboarding_router
@@ -48,6 +43,7 @@ from modules.chat.router import router as chat_router
 from modules.admin.router import router as admin_router
 from modules.payments.router import router as payments_router
 from modules.tasks.router import router as tasks_router
+from modules.support.router import router as support_router  # ← NEW
 
 PREFIX = "/api/v1"
 app.include_router(auth_router, prefix=PREFIX)
@@ -57,6 +53,7 @@ app.include_router(chat_router, prefix=PREFIX)
 app.include_router(admin_router, prefix=PREFIX)
 app.include_router(payments_router, prefix=PREFIX)
 app.include_router(tasks_router, prefix=PREFIX)
+app.include_router(support_router, prefix=PREFIX)  # ← NEW
 
 @app.get("/")
 async def root():
@@ -67,7 +64,6 @@ async def root():
         "version": "1.0.0",
         "docs": "/docs"
     }
-
 @app.get("/health")
 async def health():
     return {"status": "healthy", "platform": settings.platform_name}
