@@ -167,7 +167,7 @@ export default function Dashboard() {
               </div>
               {!isLastLevel && nextTrack && (
                 <button
-                  onClick={() => navigate('/pending', { state: { selectedTrack: nextTrack, isRenewal: true } })}
+                  onClick={() => navigate('/renewal')}
                   className="mt-3 w-full py-2 px-4 bg-brand-400 text-white text-sm font-semibold rounded-xl">
                   🚀 Start Next Module: {nextTrackName}
                 </button>
