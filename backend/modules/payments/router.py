@@ -3,7 +3,7 @@ from typing import Optional
 from core.security import get_current_user
 from core.database import get_supabase_admin
 from core.config import settings
-from modules.notifications.router import create_notification  # ← ADD THIS
+from modules.notifications.router import create_notification
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import logging
@@ -68,23 +68,93 @@ def get_next_track(current_track: str):
         return None
 
 
+# ── Helper: get student preferred_language ────────────────────────────────────
+
+def get_student_language(db, student_id: str) -> str:
+    try:
+        result = db.table("users").select("preferred_language").eq("id", student_id).single().execute()
+        return result.data.get("preferred_language", "en") if result.data else "en"
+    except Exception:
+        return "en"
+
+
+# ── Helper: language-aware notification text ──────────────────────────────────
+
+def payment_notify_text(event: str, lang: str, track_name: str = "", duration: int = 0, end_date: str = "", reason: str = "") -> dict:
+    """
+    event: approved_enrollment | approved_same | approved_next | rejected
+    Returns: {"title": ..., "body": ...}
+    """
+    if lang == "ur_nastaliq":
+        texts = {
+            "approved_enrollment": {
+                "title": "✅ پیمنٹ منظور ہو گئی!",
+                "body": f"آپ کی پیمنٹ منظور ہو گئی۔ {track_name} کورس شروع ہو گیا — {duration} دن۔"
+            },
+            "approved_same": {
+                "title": "✅ ری نیوول منظور ہو گئی!",
+                "body": f"{track_name} کورس {duration} دن اور بڑھ گیا۔ نئی آخری تاریخ: {end_date}۔"
+            },
+            "approved_next": {
+                "title": "🎉 اگلا کورس کھل گیا!",
+                "body": f"مبارک ہو! {track_name} کورس شروع ہو گیا — {duration} دن۔"
+            },
+            "rejected": {
+                "title": "❌ پیمنٹ مسترد ہو گئی",
+                "body": f"آپ کی پیمنٹ مسترد ہو گئی۔ وجہ: {reason or 'ایڈمن سے رابطہ کریں'}۔"
+            },
+        }
+    elif lang == "ur_roman":
+        texts = {
+            "approved_enrollment": {
+                "title": "✅ Payment Approve Ho Gayi!",
+                "body": f"Tumhari payment approve ho gayi. {track_name} course shuru ho gaya — {duration} din."
+            },
+            "approved_same": {
+                "title": "✅ Renewal Approve Ho Gayi!",
+                "body": f"{track_name} course {duration} din aur extend ho gaya. Naya end date: {end_date}."
+            },
+            "approved_next": {
+                "title": "🎉 Next Course Unlock Ho Gaya!",
+                "body": f"Mubarak ho! {track_name} course shuru ho gaya — {duration} din."
+            },
+            "rejected": {
+                "title": "❌ Payment Reject Ho Gayi",
+                "body": f"Tumhari payment reject ho gayi. Reason: {reason or 'Admin se rabta karo'}."
+            },
+        }
+    else:  # English
+        texts = {
+            "approved_enrollment": {
+                "title": "✅ Payment Approved!",
+                "body": f"Your payment has been approved. {track_name} course has started — {duration} days."
+            },
+            "approved_same": {
+                "title": "✅ Renewal Approved!",
+                "body": f"{track_name} course extended by {duration} days. New end date: {end_date}."
+            },
+            "approved_next": {
+                "title": "🎉 Next Course Unlocked!",
+                "body": f"Congratulations! {track_name} course has started — {duration} days."
+            },
+            "rejected": {
+                "title": "❌ Payment Rejected",
+                "body": f"Your payment was rejected. Reason: {reason or 'Please contact admin'}."
+            },
+        }
+
+    return texts.get(event, {"title": "Notification", "body": ""})
+
+
 # ── Helper: notify all admins + super_admin ───────────────────────────────────
 
 async def notify_admins(db, type: str, title: str, body: str):
-    """Notify all admins and super_admin — used for payment events"""
     try:
         admins = db.table("users").select("id").in_(
             "role", ["admin", "super_admin"]
         ).execute()
-
         for admin in (admins.data or []):
-            await create_notification(
-                db=db,
-                user_id=admin["id"],
-                type=type,
-                title=title,
-                body=body
-            )
+            await create_notification(db=db, user_id=admin["id"], type=type, title=title, body=body)
     except Exception as e:
         logger.error(f"[NOTIFY_ADMINS] Failed: {e}")
 
@@ -146,7 +216,6 @@ async def submit_payment(
         "payment_type": "new_enrollment"
     }).execute()
 
-    # ── NOTIFY admins: new enrollment payment submitted ──
     await notify_admins(
         db=db,
         type="payment_submitted",
@@ -298,7 +367,6 @@ async def submit_renewal(
         "notes": f"Target track: {target_track}"
     }).execute()
 
-    # ── NOTIFY admins: renewal payment submitted ──
     renewal_label = "Same Course Extend" if renewal_type == "renewal_same" else "Next Course Unlock"
     await notify_admins(
         db=db,
@@ -372,6 +440,9 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
     student_id = payment.data["student_id"]
     payment_type = payment.data.get("payment_type", "new_enrollment")
 
+    # ── Fetch student language once — used for all notifications below ──
+    lang = get_student_language(db, student_id)
+
     if body.action == "approve":
 
         if payment_type == "new_enrollment":
@@ -406,14 +477,12 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
             except Exception as e:
                 logger.error(f"Course creation failed: {e}")
 
-            # ── NOTIFY student: enrollment approved ──
-            await create_notification(
-                db=db,
-                user_id=student_id,
-                type="payment_approved",
-                title="✅ Payment Approved!",
-                body=f"Tumhari payment approve ho gayi. {TRACK_NAMES.get(current_track)} course shuru ho gaya — {duration} din."
+            text = payment_notify_text(
+                "approved_enrollment", lang,
+                track_name=TRACK_NAMES.get(current_track, current_track),
+                duration=duration
             )
+            await create_notification(db=db, user_id=student_id, type="payment_approved", **text)
 
         elif payment_type == "renewal_same":
             student_profile = db.table("student_profiles").select(
@@ -429,7 +498,7 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
                 try:
                     current_end_dt = datetime.fromisoformat(current_end.replace("Z", ""))
                     base = max(now, current_end_dt)
-                except:
+                except Exception:
                     base = now
             else:
                 base = now
@@ -445,14 +514,13 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
 
             logger.info(f"[RENEWAL_SAME] student={student_id} extended to {new_end}")
 
-            # ── NOTIFY student: renewal approved ──
-            await create_notification(
-                db=db,
-                user_id=student_id,
-                type="payment_approved",
-                title="✅ Renewal Approved!",
-                body=f"{TRACK_NAMES.get(current_track)} course {duration} din aur extend ho gaya. Naya end date: {new_end.strftime('%d %b %Y')}."
+            text = payment_notify_text(
+                "approved_same", lang,
+                track_name=TRACK_NAMES.get(current_track, current_track),
+                duration=duration,
+                end_date=new_end.strftime("%d %b %Y")
             )
+            await create_notification(db=db, user_id=student_id, type="payment_approved", **text)
 
         elif payment_type == "renewal_next":
             student_profile = db.table("student_profiles").select(
@@ -500,23 +568,18 @@ async def admin_review_payment(payment_id: str, body: ReviewPayment, user=Depend
 
             logger.info(f"[RENEWAL_NEXT] student={student_id} moved to {next_track}")
 
-            # ── NOTIFY student: next course unlocked ──
-            await create_notification(
-                db=db,
-                user_id=student_id,
-                type="payment_approved",
-                title="🎉 Next Course Unlock Ho Gaya!",
-                body=f"Mubarak ho! {TRACK_NAMES.get(next_track)} course shuru ho gaya — {duration} din."
+            text = payment_notify_text(
+                "approved_next", lang,
+                track_name=TRACK_NAMES.get(next_track, next_track),
+                duration=duration
             )
+            await create_notification(db=db, user_id=student_id, type="payment_approved", **text)
 
     else:
-        # Rejected — notify student
-        await create_notification(
-            db=db,
-            user_id=student_id,
-            type="payment_rejected",
-            title="❌ Payment Reject Ho Gayi",
-            body=f"Tumhari payment reject ho gayi. Reason: {body.admin_note or 'Admin se rabta karo'}."
+        text = payment_notify_text(
+            "rejected", lang,
+            reason=body.admin_note or ""
         )
+        await create_notification(db=db, user_id=student_id, type="payment_rejected", **text)
 
     return {"message": f"Payment {new_status}", "payment_id": payment_id}
