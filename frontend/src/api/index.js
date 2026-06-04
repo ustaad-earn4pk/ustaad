@@ -100,3 +100,11 @@ export const adminAPI = {
   getCosts: () => api.get('/admin/costs'),
 }
 export default api
+
+export const notificationAPI = {
+  getMyNotifications: (unreadOnly = false) =>
+    api.get(`/notifications/my${unreadOnly ? '?unread_only=true' : ''}`),
+  markRead: (notificationId = null) =>
+    api.post('/notifications/mark-read', notificationId ? { notification_id: notificationId } : {}),
+  clearAll: () => api.delete('/notifications/clear'),
+}
