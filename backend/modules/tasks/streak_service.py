@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from core.database import supabase
+from core.database import get_supabase_admin
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ BADGES = [
 async def update_streak(student_id: str) -> dict:
     try:
         # Fetch current profile
-        res = supabase.table("student_profiles").select(
+        res = get_supabase_admin().table("student_profiles").select(
             "current_streak, longest_streak, last_activity_date, streak_freeze_used, streak_badges"
         ).eq("user_id", student_id).single().execute()
 
@@ -80,7 +80,7 @@ async def update_streak(student_id: str) -> dict:
                 break
 
         # Save to DB
-        supabase.table("student_profiles").update({
+        get_supabase_admin().table("student_profiles").update({
             "current_streak": current_streak,
             "longest_streak": longest_streak,
             "last_activity_date": today.isoformat(),
@@ -109,7 +109,7 @@ async def check_streak_warning(student_id: str) -> dict:
     Returns warning if student hasn't submitted today and yesterday was last activity.
     """
     try:
-        res = supabase.table("student_profiles").select(
+        res = get_supabase_admin().table("student_profiles").select(
             "current_streak, last_activity_date, streak_freeze_used"
         ).eq("user_id", student_id).single().execute()
 
@@ -145,7 +145,7 @@ async def check_streak_warning(student_id: str) -> dict:
         # Last activity was 2 days ago and freeze not used — last chance
         if last_activity == today - timedelta(days=2) and not freeze_used:
             # Mark freeze as used
-            supabase.table("student_profiles").update({
+            get_supabase_admin().table("student_profiles").update({
                 "streak_freeze_used": True
             }).eq("user_id", student_id).execute()
 
