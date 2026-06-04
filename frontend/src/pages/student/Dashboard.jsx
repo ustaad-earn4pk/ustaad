@@ -6,6 +6,7 @@ import { useLangStore } from '../../store/langStore'
 import { studentAPI, paymentAPI } from '../../api'
 import UstaadBot from '../../components/bot/UstaadBot'
 import LanguageSwitcher from '../../components/common/LanguageSwitcher'
+import NotificationBell from '../../components/NotificationBell'
 
 const stagger = { animate: { transition: { staggerChildren: 0.07 } } }
 const fadeUp = { initial: { y: 16, opacity: 0 }, animate: { y: 0, opacity: 1 } }
@@ -109,6 +110,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact />
+            <NotificationBell />
             <button onClick={logout}
               className="w-10 h-10 bg-brand-400 rounded-2xl flex items-center justify-center text-white font-bold"
               title="Logout">
