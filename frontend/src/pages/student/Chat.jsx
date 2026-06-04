@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useLangStore } from '../../store/langStore'
 import { chatAPI, supportAPI } from '../../api'
@@ -98,10 +98,11 @@ export default function Chat() {
   const { user } = useAuthStore()
   const { t, isRTL } = useLangStore()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
 
-  const [activeTab, setActiveTab] = useState('ai')  // 'ai' | 'support'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'ai')
 
   // AI Chat state
   const [messages, setMessages] = useState([])
@@ -129,11 +130,9 @@ export default function Chat() {
   useEffect(() => {
     if (activeTab === 'support') {
       loadSupportMessages()
-      // Start polling
       const interval = setInterval(loadSupportMessages, 5000)
       setSupportPolling(interval)
     } else {
-      // Stop polling
       if (supportPolling) {
         clearInterval(supportPolling)
         setSupportPolling(null)
@@ -199,7 +198,6 @@ export default function Chat() {
     setSupportInput('')
     setSupportLoading(true)
 
-    // Optimistic update
     setSupportMessages(prev => [...prev, {
       sender_role: 'student',
       message: text,

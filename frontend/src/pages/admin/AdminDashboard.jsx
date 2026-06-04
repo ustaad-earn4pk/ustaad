@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { adminAPI, supportAPI } from '../../api'
 import LanguageSwitcher from '../../components/common/LanguageSwitcher'
@@ -258,7 +258,13 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null)
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview')
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab) setActiveTab(tab)
+  }, [searchParams])
 
   useEffect(() => { loadData() }, [])
 

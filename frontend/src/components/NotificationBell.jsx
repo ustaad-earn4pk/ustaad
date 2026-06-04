@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { notificationAPI } from '../api/index'
 
 const TYPE_ICON = {
@@ -8,6 +9,15 @@ const TYPE_ICON = {
   task_graded: '📝',
   support_message: '💬',
   support_reply: '💬',
+}
+
+const TYPE_ROUTE = {
+  payment_submitted: '/admin?tab=payments',
+  payment_approved: '/dashboard',
+  payment_rejected: '/pending',
+  task_graded: '/tasks',
+  support_message: '/admin?tab=support',
+  support_reply: '/chat?tab=support',
 }
 
 function timeAgo(dateStr) {
@@ -23,6 +33,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const dropdownRef = useRef(null)
+  const navigate = useNavigate()
 
   const fetchNotifications = async () => {
     try {
@@ -57,6 +68,13 @@ export default function NotificationBell() {
         setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
       } catch (e) {}
     }
+  }
+
+  const handleNotificationClick = async (n) => {
+    try { await notificationAPI.markRead(n.id) } catch (e) {}
+    setOpen(false)
+    const route = TYPE_ROUTE[n.type]
+    if (route) navigate(route, { replace: false })
   }
 
   const handleClear = async (e) => {
@@ -98,7 +116,8 @@ export default function NotificationBell() {
               </div>
             ) : (
               notifications.map((n) => (
-                <div key={n.id} style={{ display: 'flex', gap: '10px', padding: '12px 16px', borderBottom: '1px solid #f9fafb', background: n.is_read ? '#fff' : '#f0f9ff' }}>
+                <div key={n.id} onClick={() => handleNotificationClick(n)}
+                  style={{ display: 'flex', gap: '10px', padding: '12px 16px', borderBottom: '1px solid #f9fafb', background: n.is_read ? '#fff' : '#f0f9ff', cursor: TYPE_ROUTE[n.type] ? 'pointer' : 'default' }}>
                   <div style={{ fontSize: '20px', flexShrink: 0, marginTop: '1px' }}>{TYPE_ICON[n.type] || '🔔'}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: n.is_read ? '500' : '600', fontSize: '13px', color: '#111827', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.title}</div>
