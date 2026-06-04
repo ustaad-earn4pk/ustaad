@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from core.database import get_db
+from core.database import get_supabase_admin
 from core.security import get_current_user
 from typing import Optional
-import uuid
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -17,7 +16,7 @@ async def create_notification(
     body: str
 ):
     """
-    Call this from payments, tasks, support, students modules to fire a notification.
+    Call this from payments, tasks, support modules to fire a notification.
     Fails silently — never breaks the main flow.
     """
     try:
@@ -29,7 +28,6 @@ async def create_notification(
             "is_read": False
         }).execute()
     except Exception as e:
-        # Notification fail honi chahiye silently — main flow na rukey
         print(f"[NOTIFY ERROR] user={user_id} type={type} error={e}")
 
 
@@ -40,12 +38,8 @@ async def get_my_notifications(
     unread_only: bool = False,
     limit: int = 20,
     current_user: dict = Depends(get_current_user),
-    db=Depends(get_db)
 ):
-    """
-    Returns notifications for logged-in user.
-    Optional: ?unread_only=true to get only unread
-    """
+    db = get_supabase_admin()
     try:
         query = db.table("notifications") \
             .select("*") \
@@ -58,7 +52,6 @@ async def get_my_notifications(
 
         result = query.execute()
 
-        # Unread count bhi bhejo saath mein
         unread_result = db.table("notifications") \
             .select("id", count="exact") \
             .eq("user_id", current_user["id"]) \
@@ -78,14 +71,10 @@ async def get_my_notifications(
 
 @router.post("/mark-read")
 async def mark_notifications_read(
-    notification_id: Optional[str] = None,  # None = mark all read
+    notification_id: Optional[str] = None,
     current_user: dict = Depends(get_current_user),
-    db=Depends(get_db)
 ):
-    """
-    Mark one notification read (pass notification_id)
-    OR mark all read (pass nothing)
-    """
+    db = get_supabase_admin()
     try:
         query = db.table("notifications") \
             .update({"is_read": True}) \
@@ -95,7 +84,6 @@ async def mark_notifications_read(
             query = query.eq("id", notification_id)
 
         query.execute()
-
         return {"success": True}
 
     except Exception as e:
@@ -107,9 +95,8 @@ async def mark_notifications_read(
 @router.delete("/clear")
 async def clear_all_notifications(
     current_user: dict = Depends(get_current_user),
-    db=Depends(get_db)
 ):
-    """Delete all notifications for current user"""
+    db = get_supabase_admin()
     try:
         db.table("notifications") \
             .delete() \
