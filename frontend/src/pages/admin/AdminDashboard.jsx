@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { adminAPI, supportAPI } from '../../api'
 import LanguageSwitcher from '../../components/common/LanguageSwitcher'
+import NotificationBell from '../../components/NotificationBell'
 
 const stagger = { animate: { transition: { staggerChildren: 0.05 } } }
 const fadeUp = { initial: { y: 12, opacity: 0 }, animate: { y: 0, opacity: 1 } }
@@ -159,7 +160,6 @@ function SupportTab({ userRole }) {
     }
   }
 
-  // Chat view
   if (selectedStudent) {
     return (
       <div className="flex flex-col h-[70vh]">
@@ -210,7 +210,6 @@ function SupportTab({ userRole }) {
     )
   }
 
-  // Conversations list
   if (loading) return <div className="skeleton h-32" />
 
   if (conversations.length === 0) return (
@@ -309,6 +308,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact />
+            <NotificationBell />
             <button onClick={logout}
               className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-100">
               Logout
