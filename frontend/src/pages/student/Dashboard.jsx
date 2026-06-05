@@ -10,7 +10,6 @@ import NotificationBell from '../../components/NotificationBell'
 
 const stagger = { animate: { transition: { staggerChildren: 0.09 } } }
 const fadeUp = { initial: { y: 16, opacity: 0 }, animate: { y: 0, opacity: 1, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } } }
-const softFade = { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } } }
 
 const TRACK_NAMES = {
   computer_basics:       'Computer & Internet Basics',
@@ -28,18 +27,61 @@ const TRACK_LEVELS = {
 
 const LAST_LEVEL = 5
 
-const EXPIRY_BANNERS = {
-  warning_7: { bg: 'bg-yellow-50 border-yellow-200', text: 'text-yellow-800', sub: 'text-yellow-600', icon: '⚠️' },
-  warning_3: { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', sub: 'text-orange-600', icon: '🔔' },
-  warning_1: { bg: 'bg-red-50 border-red-200', text: 'text-red-800', sub: 'text-red-600', icon: '🚨' },
-  grace:     { bg: 'bg-red-50 border-red-300', text: 'text-red-900', sub: 'text-red-700', icon: '⛔' },
-}
+// ── Notification Strip ────────────────────────────────────────────────────────
+function NotificationStrip({ alerts }) {
+  const [current, setCurrent] = useState(0)
+  const navigate = useNavigate()
 
-const BADGE_CONFIG = {
-  streak_3:  { emoji: '🔥', label: '3 Day Streak' },
-  streak_7:  { emoji: '⚡', label: '7 Day Streak' },
-  streak_14: { emoji: '💪', label: '14 Day Streak' },
-  streak_30: { emoji: '🏆', label: '30 Day Streak' },
+  useEffect(() => {
+    if (alerts.length <= 1) return
+    const timer = setInterval(() => {
+      setCurrent(i => (i + 1) % alerts.length)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [alerts.length])
+
+  if (!alerts.length) return null
+
+  const alert = alerts[current]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="mx-5 mt-4"
+    >
+      <AnimatePresence mode="wait">
+        <motion.button
+          key={current}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.3 }}
+          onClick={() => alert.action && navigate(alert.action)}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all
+            ${alert.type === 'danger' ? 'bg-red-500' :
+              alert.type === 'warning' ? 'bg-amber-500' :
+              alert.type === 'info' ? 'bg-blue-500' :
+              'bg-gray-800'} text-white`}
+        >
+          <span className="text-base flex-shrink-0">{alert.icon}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold truncate">{alert.title}</p>
+            {alert.sub && <p className="text-xs opacity-80 truncate">{alert.sub}</p>}
+          </div>
+          {alert.action && <span className="text-xs opacity-70 flex-shrink-0">→</span>}
+          {alerts.length > 1 && (
+            <div className="flex gap-1 flex-shrink-0">
+              {alerts.map((_, i) => (
+                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === current ? 'bg-white' : 'bg-white/40'}`} />
+              ))}
+            </div>
+          )}
+        </motion.button>
+      </AnimatePresence>
+    </motion.div>
+  )
 }
 
 export default function Dashboard() {
@@ -80,7 +122,6 @@ export default function Dashboard() {
       console.error(err)
     } finally {
       setLoading(false)
-      // Small delay taake sab ek saath smoothly aaye
       setTimeout(() => setDataReady(true), 50)
     }
   }
@@ -90,18 +131,55 @@ export default function Dashboard() {
   const trackName = TRACK_NAMES[currentTrack] || currentTrack
   const currentLevel = TRACK_LEVELS[currentTrack] || 1
   const isLastLevel = currentLevel >= LAST_LEVEL
-
   const nextTrack = expiry?.next_track
   const nextTrackName = TRACK_NAMES[nextTrack] || nextTrack
-  const bannerConfig = expiry ? EXPIRY_BANNERS[expiry.expiry_status] : null
-
   const badges = profile?.streak_badges || []
   const latestBadge = badges.length > 0 ? badges[badges.length - 1] : null
+
+  // Build alerts array for notification strip
+  const alerts = []
+  if (streakWarning?.warning) {
+    alerts.push({
+      icon: streakWarning.freeze_available ? '🔥' : '🚨',
+      title: streakWarning.message,
+      sub: 'Task submit karo — streak bachao',
+      type: streakWarning.freeze_available ? 'warning' : 'danger',
+      action: '/tasks'
+    })
+  }
+  if (expiry?.expiry_status && isApproved) {
+    const daysLeft = expiry.expiry_status === 'grace' ? expiry.grace_days_left : expiry.days_left
+    alerts.push({
+      icon: expiry.expiry_status === 'grace' ? '⛔' : expiry.days_left <= 1 ? '🚨' : expiry.days_left <= 3 ? '🔔' : '⚠️',
+      title: expiry.expiry_status === 'grace' ? `Grace period — ${daysLeft} din bacha` : `Subscription — ${daysLeft} din bacha`,
+      sub: !isLastLevel && nextTrack ? `Next: ${nextTrackName}` : 'Renew karo',
+      type: expiry.days_left <= 1 || expiry.expiry_status === 'grace' ? 'danger' : 'warning',
+      action: '/renewal'
+    })
+  }
+  if (payment?.status === 'pending') {
+    alerts.push({
+      icon: '⏳',
+      title: 'Payment review mein hai',
+      sub: `PKR ${payment.amount_pkr?.toLocaleString()} • TXN: ${payment.transaction_id}`,
+      type: 'info',
+      action: null
+    })
+  }
+  if (payment?.status === 'rejected') {
+    alerts.push({
+      icon: '❌',
+      title: 'Payment reject ho gayi',
+      sub: payment.notes || 'Admin se contact karo',
+      type: 'danger',
+      action: '/pending'
+    })
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
 
-      {/* Header — always visible */}
+      {/* Header */}
       <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-4 safe-top">
         <div className="flex items-center justify-between">
           <div>
@@ -129,6 +207,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Notification Strip */}
+      {dataReady && <NotificationStrip alerts={alerts} />}
+
       {/* Loading skeleton */}
       {loading && (
         <div className="px-5 pt-5 space-y-4">
@@ -138,7 +219,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Main content — sab data ready hone ke baad ek saath smoothly aaye */}
+      {/* Main content */}
       <AnimatePresence>
         {dataReady && (
           <motion.div
@@ -146,110 +227,8 @@ export default function Dashboard() {
             variants={stagger}
             initial="initial"
             animate="animate"
-            className="px-5 pt-5 space-y-4"
+            className="px-5 pt-4 space-y-4"
           >
-
-            {/* Streak Warning Banner */}
-            {streakWarning?.warning && (
-              <motion.div variants={softFade}>
-                <div className={`card border ${streakWarning.freeze_available ? 'bg-orange-50 border-orange-200' : 'bg-red-50 border-red-300'}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{streakWarning.freeze_available ? '🔥' : '🚨'}</span>
-                    <div>
-                      <p className={`font-semibold text-sm ${streakWarning.freeze_available ? 'text-orange-800' : 'text-red-800'}`}>
-                        {streakWarning.message}
-                      </p>
-                      <p className={`text-xs mt-0.5 ${streakWarning.freeze_available ? 'text-orange-600' : 'text-red-600'}`}>
-                        {streakWarning.freeze_available
-                          ? 'Ek din ki chhoot milti hai — aaj hi submit karo!'
-                          : 'Aakhri mauka — aaj submit nahi kiya tu streak 0 ho jayega!'}
-                      </p>
-                    </div>
-                  </div>
-                  <button onClick={() => navigate('/tasks')}
-                    className={`mt-3 w-full py-2 px-4 text-white text-sm font-semibold rounded-xl
-                      ${streakWarning.freeze_available ? 'bg-orange-500' : 'bg-red-500'}`}>
-                    📋 Aaj ka Task Submit Karo
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Expiry Warning Banner */}
-            {bannerConfig && isApproved && (
-              <motion.div variants={softFade}>
-                <div className={`card border ${bannerConfig.bg}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{bannerConfig.icon}</span>
-                      <div>
-                        <p className={`font-semibold text-sm ${bannerConfig.text}`}>
-                          {expiry.expiry_status === 'grace'
-                            ? `Grace period — ${expiry.grace_days_left} din bacha`
-                            : `Subscription khatam hone mein ${expiry.days_left} din bacha`}
-                        </p>
-                        <p className={`text-xs mt-0.5 ${bannerConfig.sub}`}>
-                          {expiry.expiry_status === 'grace'
-                            ? 'Is ke baad access band ho jayega'
-                            : 'Abhi renew karo ya next module lo'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  {!isLastLevel && nextTrack && (
-                    <button onClick={() => navigate('/renewal')}
-                      className="mt-3 w-full py-2 px-4 bg-brand-400 text-white text-sm font-semibold rounded-xl">
-                      🚀 Start Next Module: {nextTrackName}
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Payment Status Card */}
-            {payment && (
-              <motion.div variants={softFade}>
-                {payment.status === 'pending' && (
-                  <div className="card bg-amber-50 border border-amber-200">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">⏳</span>
-                      <div>
-                        <p className="font-semibold text-amber-800 text-sm">Payment Under Review</p>
-                        <p className="text-xs text-amber-600">Admin 24 ghante mein verify karega</p>
-                      </div>
-                    </div>
-                    <div className="mt-2 text-xs text-amber-700">
-                      Amount: PKR {payment.amount_pkr?.toLocaleString()} • TXN: {payment.transaction_id}
-                    </div>
-                  </div>
-                )}
-                {payment.status === 'approved' && (
-                  <div className="card bg-green-50 border border-green-200">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">✅</span>
-                      <div>
-                        <p className="font-semibold text-green-800 text-sm">Payment Approved!</p>
-                        <p className="text-xs text-green-600">PKR {payment.amount_pkr?.toLocaleString()} verified</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {payment.status === 'rejected' && (
-                  <div className="card bg-red-50 border border-red-200">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">❌</span>
-                      <div>
-                        <p className="font-semibold text-red-800 text-sm">Payment Rejected</p>
-                        <p className="text-xs text-red-600">{payment.notes || 'Admin se contact karo'}</p>
-                      </div>
-                    </div>
-                    <button onClick={() => navigate('/pending')} className="mt-2 text-xs text-red-600 underline">
-                      Dobara submit karo
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            )}
 
             {/* Current Course Card */}
             {isApproved && currentTrack && (
