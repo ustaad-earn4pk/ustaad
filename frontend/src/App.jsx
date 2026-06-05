@@ -9,6 +9,7 @@ import Chat from './pages/student/Chat'
 import Tasks, { TaskDetail } from './pages/student/Tasks'
 import Onboarding from './pages/student/Onboarding'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminStudentDetail from './pages/admin/AdminStudentDetail'
 import ForgotPassword from './pages/student/ForgotPassword'
 import ResetPassword from './pages/student/ResetPassword'
 import Profile from './pages/student/Profile'
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/renewal" element={<ProtectedRoute><Renewal /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/student/:id" element={<ProtectedRoute requireAdmin><AdminStudentDetail /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
