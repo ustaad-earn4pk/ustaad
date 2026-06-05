@@ -420,7 +420,7 @@ PRO_TIP: [one practical GHL/digital skills tip]"""
 async def assign_next_task(student_id: str, db) -> Optional[dict]:
     try:
         profile = db.table("student_profiles").select(
-            "current_track, plan_started_at, total_tasks_assigned"
+            "current_track, plan_started_at, total_tasks_assigned, plan_duration_override"
         ).eq("user_id", student_id).single().execute()
 
         if not profile.data:
@@ -429,6 +429,7 @@ async def assign_next_task(student_id: str, db) -> Optional[dict]:
         current_track = profile.data.get("current_track")
         plan_started = profile.data.get("plan_started_at")
         tasks_assigned = profile.data.get("total_tasks_assigned") or 0
+        duration_override = profile.data.get("plan_duration_override")
 
         if not current_track or not plan_started:
             return None
@@ -436,6 +437,11 @@ async def assign_next_task(student_id: str, db) -> Optional[dict]:
         started_dt = datetime.fromisoformat(plan_started.replace("Z", "+00:00"))
         today = datetime.now(timezone.utc)
         day_number = (today - started_dt).days + 1
+
+        # Duration override — tasks count se calculate karo time se nahi
+        # 1 din = testing mode — har task submit karne pe agla task milega
+        if duration_override and duration_override > 0:
+            day_number = tasks_assigned + 1
 
         if current_track == "computer_basics":
             day_data = get_day_curriculum(day_number)
