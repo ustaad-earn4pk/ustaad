@@ -315,6 +315,13 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact />
             <NotificationBell />
+            {userRole === 'super_admin' && (
+              <button
+                onClick={() => navigate('/admin/management')}
+                className="text-xs font-medium px-3 py-2 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors">
+                👤 Admins
+              </button>
+            )}
             <button onClick={logout}
               className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-100">
               Logout
