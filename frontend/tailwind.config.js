@@ -6,13 +6,13 @@ export default {
     extend: {
       colors: {
         brand: {
-          50:  '#E1F5EE',
-          100: '#9FE1CB',
-          200: '#5DCAA5',
-          400: '#1D9E75',
-          600: '#0F6E56',
-          800: '#085041',
-          900: '#04342C',
+          50:  '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          400: '#6366f1',
+          600: '#4f46e5',
+          800: '#3730a3',
+          900: '#312e81',
         },
         amber: {
           400: '#EF9F27',
@@ -28,7 +28,6 @@ export default {
         'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
         'slide-up': 'slide-up 0.3s ease-out',
         'fade-in': 'fade-in 0.3s ease-out',
-        'count-up': 'count-up 1s ease-out',
       },
       keyframes: {
         bob: {
