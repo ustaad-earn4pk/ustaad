@@ -1,4 +1,4 @@
-\import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
@@ -10,6 +10,8 @@ const stagger = { animate: { transition: { staggerChildren: 0.05 } } }
 const fadeUp = { initial: { y: 12, opacity: 0 }, animate: { y: 0, opacity: 1 } }
 
 function SettingsTab({ userEmail }) {
+  const { user: authUser } = useAuthStore()
+  const email = userEmail || authUser?.email || ''
   const [tuners, setTuners] = useState(null)
   const [prompts, setPrompts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -61,7 +63,7 @@ function SettingsTab({ userEmail }) {
   async function verifyPassword() {
     setVerifying(true)
     try {
-      await adminAPI.verifyPassword({ email: userEmail, password })
+      await adminAPI.verifyPassword({ email: email, password })
       setPasswordModal(false)
       setPassword('')
       setShowAdvanced(true)
