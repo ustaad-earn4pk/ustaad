@@ -23,11 +23,18 @@ const queryClient = new QueryClient({
   }
 })
 
-// ── Page transition wrapper ────────────────────────────────────────────────
 const pageVariants = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } }
+  initial: { opacity: 0, y: 28 },
+  animate: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] } 
+  },
+  exit: { 
+    opacity: 0, 
+    y: -14, 
+    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } 
+  }
 }
 
 function PageWrapper({ children }) {
@@ -63,7 +70,6 @@ function PublicRoute({ children }) {
   return children
 }
 
-// ── Animated Routes ────────────────────────────────────────────────────────
 function AnimatedRoutes() {
   const location = useLocation()
   return (
