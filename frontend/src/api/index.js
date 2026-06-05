@@ -98,8 +98,15 @@ export const adminAPI = {
   getPendingPayments: () => api.get('/payments/admin/pending'),
   reviewPayment: (id, data) => api.post(`/payments/admin/${id}/review`, data),
   getCosts: () => api.get('/admin/costs'),
+
+  // ── Student detail ──────────────────────────────────────────────────────────
+  getStudentFullDetail: (studentId) => api.get(`/students/full-detail/${studentId}`),
+  updateStudentSettings: (studentId, data) => api.put(`/students/admin-update/${studentId}`, data),
+
+  // ── Admins management (super admin only) ────────────────────────────────────
+  getAdminsList: () => api.get('/students/admins-list'),
+  updateAdminStatus: (adminId, action) => api.put(`/students/admin-status/${adminId}?action=${action}`),
 }
-export default api
 
 export const notificationAPI = {
   getMyNotifications: (unreadOnly = false) =>
@@ -108,3 +115,5 @@ export const notificationAPI = {
     api.post('/notifications/mark-read', notificationId ? { notification_id: notificationId } : {}),
   clearAll: () => api.delete('/notifications/clear'),
 }
+
+export default api
