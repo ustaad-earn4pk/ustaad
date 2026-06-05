@@ -9,19 +9,13 @@ import NotificationBell from '../../components/NotificationBell'
 const stagger = { animate: { transition: { staggerChildren: 0.05 } } }
 const fadeUp = { initial: { y: 12, opacity: 0 }, animate: { y: 0, opacity: 1 } }
 
-function SettingsTab({ userEmail }) {
-  const { user: authUser } = useAuthStore()
-  const email = userEmail || authUser?.email || ''
+function SettingsTab() {
   const [tuners, setTuners] = useState(null)
   const [prompts, setPrompts] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
   const [activeSection, setActiveSection] = useState('tuners')
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [passwordModal, setPasswordModal] = useState(false)
-  const [password, setPassword] = useState('')
-  const [verifying, setVerifying] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState(null)
   const [promptDraft, setPromptDraft] = useState('')
 
@@ -57,21 +51,6 @@ function SettingsTab({ userEmail }) {
       showToast('Save nahi ho saka ❌')
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function verifyPassword() {
-    setVerifying(true)
-    try {
-      await adminAPI.verifyPassword({ email: email, password })
-      setPasswordModal(false)
-      setPassword('')
-      setShowAdvanced(true)
-      showToast('Password verify ho gaya ✅')
-    } catch (err) {
-      showToast('Password galat hai ❌')
-    } finally {
-      setVerifying(false)
     }
   }
 
@@ -207,90 +186,51 @@ function SettingsTab({ userEmail }) {
 
       {activeSection === 'prompts' && (
         <div className="space-y-3">
-          {!showAdvanced ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
-              <p className="text-sm font-semibold text-amber-800">⚠️ Advanced Access</p>
-              <p className="text-xs text-amber-700">Prompts edit karna system behavior directly affect karta hai. Apna password confirm karo.</p>
-              <button onClick={() => setPasswordModal(true)}
-                className="w-full py-2.5 rounded-xl bg-amber-600 text-white text-sm font-medium">
-                🔑 Password Confirm Karo
-              </button>
+          {editingPrompt ? (
+            <div className="bg-white rounded-2xl p-4 border border-gray-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{editingPrompt.category} / {editingPrompt.key}</p>
+                  {editingPrompt.description && <p className="text-xs text-gray-500">{editingPrompt.description}</p>}
+                </div>
+                <button onClick={() => { setEditingPrompt(null); setPromptDraft('') }}
+                  className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-xs">✕</button>
+              </div>
+              <textarea value={promptDraft} onChange={e => setPromptDraft(e.target.value)} rows={12}
+                className="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none focus:outline-none focus:border-brand-400" />
+              <div className="flex gap-2">
+                <button onClick={() => { setEditingPrompt(null); setPromptDraft('') }}
+                  className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium">Cancel</button>
+                <button onClick={savePrompt} disabled={saving}
+                  className="flex-1 py-2.5 rounded-xl bg-brand-400 text-white text-sm font-medium disabled:opacity-50">
+                  {saving ? 'Saving...' : '💾 Save'}
+                </button>
+              </div>
+            </div>
+          ) : prompts.length === 0 ? (
+            <div className="card text-center py-8">
+              <p className="text-2xl mb-2">📋</p>
+              <p className="text-gray-400 text-sm">Koi prompt nahi mila</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2">
-                <p className="text-xs text-green-700 font-medium">✅ Advanced edit mode active</p>
-              </div>
-              {editingPrompt ? (
-                <div className="bg-white rounded-2xl p-4 border border-gray-100 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{editingPrompt.category} / {editingPrompt.key}</p>
-                      {editingPrompt.description && <p className="text-xs text-gray-500">{editingPrompt.description}</p>}
-                    </div>
-                    <button onClick={() => { setEditingPrompt(null); setPromptDraft('') }}
-                      className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-xs">✕</button>
+            prompts.map((prompt, i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{prompt.category} / {prompt.key}</p>
+                    {prompt.description && <p className="text-xs text-gray-500 mt-0.5">{prompt.description}</p>}
+                    <p className="text-xs text-gray-400 mt-1 font-mono line-clamp-2">{prompt.prompt_en?.slice(0, 80)}...</p>
                   </div>
-                  <textarea value={promptDraft} onChange={e => setPromptDraft(e.target.value)} rows={12}
-                    className="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none focus:outline-none focus:border-brand-400" />
-                  <div className="flex gap-2">
-                    <button onClick={() => { setEditingPrompt(null); setPromptDraft('') }}
-                      className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium">Cancel</button>
-                    <button onClick={savePrompt} disabled={saving}
-                      className="flex-1 py-2.5 rounded-xl bg-brand-400 text-white text-sm font-medium disabled:opacity-50">
-                      {saving ? 'Saving...' : '💾 Save'}
-                    </button>
-                  </div>
+                  <button onClick={() => { setEditingPrompt(prompt); setPromptDraft(prompt.prompt_en || '') }}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-medium">
+                    ✏️ Edit
+                  </button>
                 </div>
-              ) : prompts.length === 0 ? (
-                <div className="card text-center py-8"><p className="text-gray-400 text-sm">Koi prompt nahi mila</p></div>
-              ) : (
-                prompts.map((prompt, i) => (
-                  <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">{prompt.category} / {prompt.key}</p>
-                        {prompt.description && <p className="text-xs text-gray-500 mt-0.5">{prompt.description}</p>}
-                        <p className="text-xs text-gray-400 mt-1 font-mono line-clamp-2">{prompt.prompt_en?.slice(0, 80)}...</p>
-                      </div>
-                      <button onClick={() => { setEditingPrompt(prompt); setPromptDraft(prompt.prompt_en || '') }}
-                        className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-medium">
-                        ✏️ Edit
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+              </div>
+            ))
           )}
         </div>
       )}
-
-      <AnimatePresence>
-        {passwordModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={e => e.target === e.currentTarget && setPasswordModal(false)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
-              <h2 className="text-lg font-bold text-gray-900">Password Confirm Karo</h2>
-              <p className="text-xs text-gray-500">Prompts edit karne ke liye apna super admin password enter karo</p>
-              <input type="password" placeholder="Password" value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && verifyPassword()}
-                className="input w-full" />
-              <div className="flex gap-2">
-                <button onClick={() => { setPasswordModal(false); setPassword('') }}
-                  className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 font-medium text-sm">Cancel</button>
-                <button onClick={verifyPassword} disabled={verifying || !password}
-                  className="flex-1 py-3 rounded-2xl bg-indigo-600 text-white font-medium text-sm disabled:opacity-50">
-                  {verifying ? '...' : 'Verify'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
@@ -692,7 +632,7 @@ export default function AdminDashboard() {
 
         {activeTab === 'payments' && <motion.div variants={fadeUp}><PaymentsTab /></motion.div>}
         {activeTab === 'support' && <motion.div variants={fadeUp}><SupportTab userRole={userRole} /></motion.div>}
-        {activeTab === 'settings' && isSuperAdmin && <motion.div variants={fadeUp}><SettingsTab userEmail={user?.email} /></motion.div>}
+        {activeTab === 'settings' && isSuperAdmin && <motion.div variants={fadeUp}><SettingsTab /></motion.div>}
 
       </motion.div>
 
