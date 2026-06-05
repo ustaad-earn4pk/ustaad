@@ -5,7 +5,7 @@ from core.database import get_supabase_admin
 from ai.computer_basics_curriculum import get_day_curriculum
 from ai.curriculum import get_curriculum
 from modules.tasks.streak_service import update_streak
-from modules.notifications.router import create_notification  # ← ADD
+from modules.notifications.router import create_notification
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import anthropic
@@ -207,6 +207,13 @@ Be specific in feedback. Name exactly what was done and what was missing.
 Do not be vague. Do not give fake encouragement for incomplete work.
 IMPORTANT: Plain text only. No markdown. No asterisks. No bold.
 
+CRITICAL OUTPUT RULES:
+- Do NOT write any preamble, introduction, or acknowledgment.
+- Do NOT say "I understand", "I am ready", "I will evaluate", or anything similar.
+- Do NOT explain what you are about to do.
+- Start your response DIRECTLY and IMMEDIATELY with "SCORE:" on the very first line.
+- Nothing before SCORE:. No exceptions.
+
 Format exactly as:
 SCORE: [number 0-100]
 WELL_DONE: [specific things done correctly]
@@ -251,6 +258,11 @@ PRO_TIP: [one practical GHL/digital skills tip]"""
         )
 
         feedback_text = response.content[0].text
+
+        # Strip any preamble that slipped through before SCORE:
+        if "SCORE:" in feedback_text:
+            feedback_text = feedback_text[feedback_text.index("SCORE:"):]
+
         score = 70
 
         for line in feedback_text.split('\n'):
@@ -312,7 +324,7 @@ PRO_TIP: [one practical GHL/digital skills tip]"""
                 emoji, verdict = "📝", "Aur mehnat karo."
             title = f"{emoji} Task Graded — {score}/100"
             body = f"{task.get('title', 'Task')} — Score: {score}/100. {verdict}"
-        else:  # English
+        else:
             if score >= 80:
                 emoji, verdict = "🌟", "Excellent work!"
             elif score >= 60:
