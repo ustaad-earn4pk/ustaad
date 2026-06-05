@@ -18,6 +18,26 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 logger = logging.getLogger(__name__)
 
 
+async def get_tuners() -> dict:
+    """Fetch global tuners from admin_settings."""
+    db = get_supabase_admin()
+    try:
+        keys = ["grading_strictness", "feedback_length", "encouragement_level", "language_tone"]
+        result = db.table("admin_settings").select("key, value").in_("key", keys).execute()
+        tuners = {
+            "grading_strictness": "normal",
+            "feedback_length": "normal",
+            "encouragement_level": "medium",
+            "language_tone": "normal",
+        }
+        for row in (result.data or []):
+            tuners[row["key"]] = row["value"]
+        return tuners
+    except Exception:
+        return {"grading_strictness": "normal", "feedback_length": "normal",
+                "encouragement_level": "medium", "language_tone": "normal"}
+
+
 @router.get("/my")
 async def get_my_tasks(user=Depends(get_current_user)):
     db = get_supabase_admin()
@@ -172,6 +192,46 @@ async def grade_task(task: dict, submission_text: str, screenshot_url: Optional[
         else:
             lang_instruction = "STRICTLY respond in English only. Do not use any Urdu words."
 
+        # Fetch global tuners
+        tuners = await get_tuners()
+        strictness = str(tuners.get("grading_strictness", "normal"))
+        encouragement = str(tuners.get("encouragement_level", "medium"))
+        feedback_length = str(tuners.get("feedback_length", "normal"))
+        tone = str(tuners.get("language_tone", "normal"))
+
+        # Tuner instructions
+        strictness_map = {
+            "sakht": "Be VERY strict. Low scores for incomplete work. No leniency.",
+            "normal": "Be balanced — strict but fair.",
+            "naram": "Be lenient and encouraging. Give benefit of doubt."
+        }
+        encourage_map = {
+            "kam": "Minimal encouragement. Be direct and factual.",
+            "medium": "Normal encouragement when deserved.",
+            "zyada": "Always be warm and encouraging, even for low scores."
+        }
+        length_map = {
+            "chota": "Keep feedback very brief — 2-3 lines max per section.",
+            "normal": "Normal feedback length.",
+            "lamba": "Give detailed, comprehensive feedback."
+        }
+        tone_map = {
+            "formal": "Use formal professional tone.",
+            "normal": "Normal mentor tone.",
+            "dost": "Use friendly, dost jaisa tone like WhatsApp."
+        }
+
+        tuner_instruction = f"""
+TUNER SETTINGS (follow strictly):
+- Strictness: {strictness_map.get(strictness, strictness_map['normal'])}
+- Encouragement: {encourage_map.get(encouragement, encourage_map['medium'])}
+- Feedback Length: {length_map.get(feedback_length, length_map['normal'])}
+- Tone: {tone_map.get(tone, tone_map['normal'])}"""
+
+        # Max tokens from feedback length
+        max_tokens_map = {"chota": 300, "normal": 600, "lamba": 900}
+        grading_max_tokens = max_tokens_map.get(feedback_length, 600)
+
         guidelines = task.get("guidelines_en", [])
         if isinstance(guidelines, list):
             guidelines_text = "\n".join([f"- {g}" for g in guidelines])
@@ -181,6 +241,7 @@ async def grade_task(task: dict, submission_text: str, screenshot_url: Optional[
         prompt_text = f"""You are USTAAD, a strict but caring Pakistani mentor grading a student task.
 
 LANGUAGE RULE — MOST IMPORTANT: {lang_instruction}
+{tuner_instruction}
 
 Task: {task.get('title', 'Task')}
 Task Description: {task.get('description', '')}
@@ -253,7 +314,7 @@ PRO_TIP: [one practical GHL/digital skills tip]"""
 
         response = client.messages.create(
             model="claude-haiku-4-5",
-            max_tokens=600,
+            max_tokens=grading_max_tokens,
             messages=[{"role": "user", "content": messages_content}]
         )
 
