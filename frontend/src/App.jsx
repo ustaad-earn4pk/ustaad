@@ -10,24 +10,23 @@ import Tasks, { TaskDetail } from './pages/student/Tasks'
 import Onboarding from './pages/student/Onboarding'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminStudentDetail from './pages/admin/AdminStudentDetail'
+import AdminManagement from './pages/admin/AdminManagement'
 import ForgotPassword from './pages/student/ForgotPassword'
 import ResetPassword from './pages/student/ResetPassword'
 import Profile from './pages/student/Profile'
 import Renewal from './pages/student/Renewal'
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, staleTime: 30000 }
   }
 })
-
-function ProtectedRoute({ children, requireAdmin = false }) {
+function ProtectedRoute({ children, requireAdmin = false, requireSuperAdmin = false }) {
   const { isAuthenticated, user } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (requireSuperAdmin && user?.role !== 'super_admin') return <Navigate to="/admin" replace />
   if (requireAdmin && user?.role !== 'admin' && user?.role !== 'super_admin') return <Navigate to="/dashboard" replace />
   return children
 }
-
 function PublicRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore()
   if (isAuthenticated) {
@@ -38,7 +37,6 @@ function PublicRoute({ children }) {
   }
   return children
 }
-
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -59,6 +57,7 @@ export default function App() {
           <Route path="/renewal" element={<ProtectedRoute><Renewal /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/student/:id" element={<ProtectedRoute requireAdmin><AdminStudentDetail /></ProtectedRoute>} />
+          <Route path="/admin/management" element={<ProtectedRoute requireSuperAdmin><AdminManagement /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
