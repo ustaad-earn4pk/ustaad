@@ -98,14 +98,19 @@ export const adminAPI = {
   getPendingPayments: () => api.get('/payments/admin/pending'),
   reviewPayment: (id, data) => api.post(`/payments/admin/${id}/review`, data),
   getCosts: () => api.get('/admin/costs'),
-
-  // ── Student detail ──────────────────────────────────────────────────────────
   getStudentFullDetail: (studentId) => api.get(`/students/full-detail/${studentId}`),
   updateStudentSettings: (studentId, data) => api.put(`/students/admin-update/${studentId}`, data),
-
-  // ── Admins management (super admin only) ────────────────────────────────────
   getAdminsList: () => api.get('/students/admins-list'),
   updateAdminStatus: (adminId, action) => api.put(`/students/admin-status/${adminId}?action=${action}`),
+}
+
+export const adminManagementAPI = {
+  createAdmin: (data) => api.post('/admin-management/create', data),
+  listAdmins: () => api.get('/admin-management/list'),
+  updateAdmin: (adminId, data) => api.put(`/admin-management/${adminId}/update`, data),
+  resetPassword: (adminId) => api.post(`/admin-management/${adminId}/reset-password`),
+  getPerformance: (adminId, params) => api.get(`/admin-management/${adminId}/performance`, { params }),
+  getAllPerformance: (params) => api.get('/admin-management/performance/all', { params }),
 }
 
 export const notificationAPI = {
