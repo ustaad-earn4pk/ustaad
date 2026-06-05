@@ -61,17 +61,25 @@ export default function AdminStudentDetail() {
   const [activeTab, setActiveTab] = useState('info')
   const [saving, setSaving] = useState(false)
   const [admins, setAdmins] = useState([])
+  const [toast, setToast] = useState('')
 
   // Edit state (super admin only)
   const [editLanguage, setEditLanguage] = useState('')
   const [editTrack, setEditTrack] = useState('')
   const [editStatus, setEditStatus] = useState('')
   const [editAdminId, setEditAdminId] = useState('')
+  const [editDuration, setEditDuration] = useState('')
+  const [editChatLimit, setEditChatLimit] = useState('')
 
   useEffect(() => {
     loadDetail()
     if (isSuperAdmin) loadAdmins()
   }, [id])
+
+  function showToast(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(''), 3000)
+  }
 
   async function loadDetail() {
     try {
@@ -81,6 +89,8 @@ export default function AdminStudentDetail() {
       setEditTrack(res.data.profile?.current_track || '')
       setEditStatus(res.data.profile?.status || '')
       setEditAdminId(res.data.assigned_admin?.admin_id || '')
+      setEditDuration(res.data.profile?.plan_duration_override || '')
+      setEditChatLimit(res.data.profile?.chat_limit_override || '')
     } catch (err) {
       console.error(err)
     } finally {
@@ -105,11 +115,13 @@ export default function AdminStudentDetail() {
         current_track: editTrack,
         status: editStatus,
         assigned_admin_id: editAdminId,
+        plan_duration_override: editDuration ? parseInt(editDuration) : null,
+        chat_limit_override: editChatLimit ? parseInt(editChatLimit) : null,
       })
       await loadDetail()
-      alert('Settings saved!')
+      showToast('Settings save ho gayi ✅')
     } catch (err) {
-      alert(err.response?.data?.detail || 'Save failed')
+      showToast(err.response?.data?.detail || 'Save failed ❌')
     } finally {
       setSaving(false)
     }
@@ -143,6 +155,13 @@ export default function AdminStudentDetail() {
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
 
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm px-5 py-3 rounded-2xl shadow-xl">
+          {toast}
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-4 safe-top">
         <div className="flex items-center gap-3">
@@ -159,7 +178,6 @@ export default function AdminStudentDetail() {
           </span>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 mt-4 bg-gray-100 p-1 rounded-2xl overflow-x-auto">
           {tabs.map(tab => (
             <TabButton key={tab.key} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)}>
@@ -174,8 +192,6 @@ export default function AdminStudentDetail() {
         {/* ── INFO TAB ── */}
         {activeTab === 'info' && (
           <motion.div {...fadeUp} className="space-y-4">
-
-            {/* Basic Info */}
             <div className="card">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Basic Info</p>
               <InfoRow label="Phone" value={studentUser?.phone} />
@@ -185,20 +201,20 @@ export default function AdminStudentDetail() {
               <InfoRow label="Language" value={LANGUAGE_OPTIONS.find(l => l.value === studentUser?.preferred_language)?.label} />
             </div>
 
-            {/* Course Info */}
             <div className="card">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Course</p>
               <InfoRow label="Current Track" value={TRACK_NAMES[profile?.current_track] || profile?.current_track} />
               <InfoRow label="Status" value={profile?.status} />
               <InfoRow label="Plan Started" value={profile?.plan_started_at ? new Date(profile.plan_started_at).toLocaleDateString() : null} />
               <InfoRow label="Plan Ends" value={profile?.plan_ends_at ? new Date(profile.plan_ends_at).toLocaleDateString() : null} />
+              <InfoRow label="Duration Override" value={profile?.plan_duration_override ? `${profile.plan_duration_override} days` : 'Default'} />
+              <InfoRow label="Chat Limit Override" value={profile?.chat_limit_override ? `${profile.chat_limit_override}/day` : 'Global Default'} />
               <InfoRow label="Tasks Assigned" value={profile?.total_tasks_assigned} />
               <InfoRow label="Tasks Completed" value={profile?.total_tasks_completed} />
               <InfoRow label="Average Score" value={profile?.average_score ? `${profile.average_score}%` : null} />
               <InfoRow label="Total Points" value={profile?.total_points} />
             </div>
 
-            {/* Streak + Badges */}
             <div className="card">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Streak & Badges</p>
               <InfoRow label="Current Streak" value={`${profile?.current_streak || 0} days`} />
@@ -215,7 +231,6 @@ export default function AdminStudentDetail() {
               )}
             </div>
 
-            {/* Assigned Admin */}
             <div className="card">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Assigned Admin</p>
               {assigned_admin ? (
@@ -228,7 +243,6 @@ export default function AdminStudentDetail() {
                 <p className="text-xs text-gray-400">Koi admin assign nahi</p>
               )}
             </div>
-
           </motion.div>
         )}
 
@@ -340,7 +354,7 @@ export default function AdminStudentDetail() {
           </motion.div>
         )}
 
-        {/* ── AI CHAT TAB (super admin only) ── */}
+        {/* ── AI CHAT TAB ── */}
         {activeTab === 'ai_chat' && isSuperAdmin && (
           <motion.div {...fadeUp}>
             <div className="card space-y-3" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
@@ -368,26 +382,22 @@ export default function AdminStudentDetail() {
           </motion.div>
         )}
 
-        {/* ── SETTINGS TAB (super admin only) ── */}
+        {/* ── SETTINGS TAB ── */}
         {activeTab === 'settings' && isSuperAdmin && (
           <motion.div {...fadeUp} className="space-y-4">
 
-            {/* Language */}
             <div className="card">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Language</p>
-              <select value={editLanguage} onChange={e => setEditLanguage(e.target.value)}
-                className="input w-full text-sm">
+              <select value={editLanguage} onChange={e => setEditLanguage(e.target.value)} className="input w-full text-sm">
                 {LANGUAGE_OPTIONS.map(l => (
                   <option key={l.value} value={l.value}>{l.label}</option>
                 ))}
               </select>
             </div>
 
-            {/* Course Track */}
             <div className="card">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Course Track</p>
-              <select value={editTrack} onChange={e => setEditTrack(e.target.value)}
-                className="input w-full text-sm">
+              <select value={editTrack} onChange={e => setEditTrack(e.target.value)} className="input w-full text-sm">
                 <option value="">Select track</option>
                 {TRACK_OPTIONS.map(([key, name]) => (
                   <option key={key} value={key}>{name}</option>
@@ -395,11 +405,9 @@ export default function AdminStudentDetail() {
               </select>
             </div>
 
-            {/* Status */}
             <div className="card">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Student Status</p>
-              <select value={editStatus} onChange={e => setEditStatus(e.target.value)}
-                className="input w-full text-sm">
+              <select value={editStatus} onChange={e => setEditStatus(e.target.value)} className="input w-full text-sm">
                 <option value="approved">✅ Approved</option>
                 <option value="trial">🎯 Trial</option>
                 <option value="pending">⏳ Pending</option>
@@ -408,45 +416,77 @@ export default function AdminStudentDetail() {
               </select>
             </div>
 
-            {/* Assigned Admin */}
             <div className="card">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Assigned Admin</p>
-              <select value={editAdminId} onChange={e => setEditAdminId(e.target.value)}
-                className="input w-full text-sm">
+              <select value={editAdminId} onChange={e => setEditAdminId(e.target.value)} className="input w-full text-sm">
                 <option value="">Unassigned</option>
                 {admins.filter(a => a.role === 'admin').map(a => (
-                  <option key={a.id} value={a.id}>
-                    {a.full_name} ({a.email})
-                  </option>
+                  <option key={a.id} value={a.id}>{a.full_name} ({a.email})</option>
                 ))}
               </select>
             </div>
 
-            {/* Save Button */}
+            {/* Course Duration Override */}
+            <div className="card">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Course Duration Override</p>
+              <p className="text-xs text-gray-400 mb-3">Default course duration override karo — 1 din testing ke liye, khali chhoro = default</p>
+              <div className="flex gap-2 flex-wrap mb-3">
+                {[1, 3, 7, 14, 30, 45, 60].map(n => (
+                  <button key={n} onClick={() => setEditDuration(n.toString())}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all
+                      ${editDuration == n ? 'bg-brand-400 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                    {n === 1 ? '1d 🧪' : `${n}d`}
+                  </button>
+                ))}
+                <button onClick={() => setEditDuration('')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all
+                    ${!editDuration ? 'bg-brand-400 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  Default
+                </button>
+              </div>
+              <input type="number" placeholder="Ya custom days likho..." value={editDuration}
+                onChange={e => setEditDuration(e.target.value)}
+                className="input w-full text-sm" />
+            </div>
+
+            {/* Chat Limit Override */}
+            <div className="card">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Chat Limit Override</p>
+              <p className="text-xs text-gray-400 mb-3">Is student ke liye daily chat limit — khali chhoro = global default</p>
+              <div className="flex gap-2 flex-wrap mb-3">
+                {[5, 10, 20, 50, 100].map(n => (
+                  <button key={n} onClick={() => setEditChatLimit(n.toString())}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all
+                      ${editChatLimit == n ? 'bg-brand-400 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                    {n}
+                  </button>
+                ))}
+                <button onClick={() => setEditChatLimit('')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all
+                    ${!editChatLimit ? 'bg-brand-400 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  Global
+                </button>
+              </div>
+              <input type="number" placeholder="Ya custom limit likho..." value={editChatLimit}
+                onChange={e => setEditChatLimit(e.target.value)}
+                className="input w-full text-sm" />
+            </div>
+
             <button onClick={handleSaveSettings} disabled={saving}
               className="btn-primary w-full py-3 text-sm disabled:opacity-50">
               {saving ? 'Saving...' : '💾 Save Changes'}
             </button>
 
-            {/* Danger Zone */}
             <div className="card border border-red-100">
               <p className="text-xs font-semibold text-red-500 uppercase tracking-wider mb-3">Danger Zone</p>
               <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setEditStatus('suspended')
-                    handleSaveSettings()
-                  }}
+                <button onClick={() => { setEditStatus('suspended'); setTimeout(handleSaveSettings, 100) }}
                   className="flex-1 py-2 text-sm rounded-2xl bg-red-50 text-red-600 font-medium">
-                  🚫 Suspend Student
+                  🚫 Suspend
                 </button>
-                <button
-                  onClick={() => {
-                    setEditStatus('approved')
-                    handleSaveSettings()
-                  }}
+                <button onClick={() => { setEditStatus('approved'); setTimeout(handleSaveSettings, 100) }}
                   className="flex-1 py-2 text-sm rounded-2xl bg-green-50 text-green-700 font-medium">
-                  ✅ Activate Student
+                  ✅ Activate
                 </button>
               </div>
             </div>
