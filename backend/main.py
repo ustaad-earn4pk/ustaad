@@ -46,6 +46,8 @@ from modules.tasks.router import router as tasks_router
 from modules.support.router import router as support_router
 from modules.reporting.router import router as reporting_router
 from modules.notifications.router import router as notifications_router
+from modules.admin_management.router import router as admin_management_router
+
 PREFIX = "/api/v1"
 app.include_router(auth_router, prefix=PREFIX)
 app.include_router(students_router, prefix=PREFIX)
@@ -57,6 +59,8 @@ app.include_router(tasks_router, prefix=PREFIX)
 app.include_router(support_router, prefix=PREFIX)
 app.include_router(reporting_router, prefix=PREFIX)
 app.include_router(notifications_router, prefix=PREFIX)
+app.include_router(admin_management_router, prefix=PREFIX)
+
 @app.get("/")
 async def root():
     return {
